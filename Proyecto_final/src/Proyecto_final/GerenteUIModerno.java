@@ -9,7 +9,7 @@ public class GerenteUIModerno extends JFrame {
     private final Color COLOR_PANEL = Color.WHITE;
     private final Color COLOR_BOTON = Color.WHITE;
     private final Color COLOR_TEXTO_BOTON = Color.BLACK;
-    private final Color COLOR_HOVER = new Color(200, 200, 200); // gris claro
+    private final Color COLOR_HOVER = new Color(200, 200, 200); 
     private final Font FUENTE_GLOBAL = new Font("Segoe UI", Font.PLAIN, 16);
 
     private JPanel panelDerecho;
@@ -22,14 +22,12 @@ public class GerenteUIModerno extends JFrame {
         setLayout(new BorderLayout());
         setExtendedState(JFrame.MAXIMIZED_BOTH);
 
-        // ---------------- PANEL IZQUIERDO ----------------
         JPanel panelMenu = new JPanel();
         panelMenu.setBackground(COLOR_PANEL);
         panelMenu.setPreferredSize(new Dimension(250, getHeight()));
         panelMenu.setLayout(new BoxLayout(panelMenu, BoxLayout.Y_AXIS));
         panelMenu.setBorder(BorderFactory.createEmptyBorder(40, 20, 40, 20));
 
-        // PERFIL
         JPanel panelPerfil = new JPanel();
         panelPerfil.setBackground(COLOR_PANEL);
         panelPerfil.setLayout(new BoxLayout(panelPerfil, BoxLayout.Y_AXIS));
@@ -56,7 +54,6 @@ public class GerenteUIModerno extends JFrame {
         separador.setForeground(Color.BLACK);
         separador.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
 
-        // BOTONES
         JPanel panelBotones = new JPanel();
         panelBotones.setBackground(COLOR_PANEL);
         panelBotones.setLayout(new BoxLayout(panelBotones, BoxLayout.Y_AXIS));
@@ -72,13 +69,11 @@ public class GerenteUIModerno extends JFrame {
 
         add(panelMenu, BorderLayout.WEST);
 
-        // ---------------- PANEL DERECHO ----------------
         panelDerecho = new JPanel();
         panelDerecho.setLayout(new BorderLayout());
         panelDerecho.setBackground(COLOR_FONDO);
         panelDerecho.setBorder(BorderFactory.createEmptyBorder(50, 50, 50, 50));
 
-        // Panel inicial con imagen + texto
         JPanel panelInicio = new JPanel();
         panelInicio.setLayout(new BoxLayout(panelInicio, BoxLayout.Y_AXIS));
         panelInicio.setBackground(COLOR_FONDO);
@@ -102,7 +97,6 @@ public class GerenteUIModerno extends JFrame {
         panelDerecho.add(panelInicio, BorderLayout.CENTER);
         add(panelDerecho, BorderLayout.CENTER);
 
-        // ---------------- CREAR BOTONES CON FUNCIONALIDAD ----------------
         for (int i = 0; i < opciones.length; i++) {
             String texto = opciones[i];
             final String textoFinal = texto;
@@ -149,7 +143,6 @@ public class GerenteUIModerno extends JFrame {
                     return;
                 }
 
-                // ---------------- REEMPLAZAR PANEL DERECHO ----------------
                 panelDerecho.removeAll();
 
                 switch (textoFinal) {
@@ -157,13 +150,15 @@ public class GerenteUIModerno extends JFrame {
                         panelDerecho.add(new PanelProductos(), BorderLayout.CENTER);
                         break;
                     case "Vendedores":
-                        panelDerecho.add(new PanelVendedores(), BorderLayout.CENTER);
+                    	panelDerecho.removeAll();
+                        Vendedores vPanel = new Vendedores();
+                        panelDerecho.add(vPanel, BorderLayout.CENTER);
+                        panelDerecho.revalidate();
+                        panelDerecho.repaint();
                         break;
                     case "Reportes":
-                        //panelDerecho.add(new PanelReportes(), BorderLayout.CENTER);
                         break;
                     case "Anuncios":
-                        //panelDerecho.add(new PanelAnuncios(), BorderLayout.CENTER);
                         break;
                 }
 
