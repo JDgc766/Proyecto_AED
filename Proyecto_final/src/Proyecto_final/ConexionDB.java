@@ -5,7 +5,7 @@ import javax.swing.*;
 
 public class ConexionDB {
 
-    private static final String DB_URL = "jdbc:sqlite:C:\\SqlLite\\Databases\\Farmacia.db";
+    private static final String DB_URL = "jdbc:sqlite:C:\\Users\\user\\git\\Proyecto_AED\\Proyecto_final\\Farmacia.db";
 
     public static Connection obtenerConexion() {
         try {
