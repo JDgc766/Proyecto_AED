@@ -8,12 +8,10 @@ public class PanelEmpleado extends JPanel {
 
     private Vendedores padre;
     private int idEmpleado;
-    private Connection conn;
 
     public PanelEmpleado(Vendedores padre, int idEmpleado) {
         this.padre = padre;
         this.idEmpleado = idEmpleado;
-        this.conn = ConexionDB.obtenerConexion();
 
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBackground(new Color(225, 245, 254));
@@ -22,10 +20,16 @@ public class PanelEmpleado extends JPanel {
     }
 
     private void cargarDatos() {
+
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+
         try {
-            PreparedStatement ps = conn.prepareStatement("SELECT * FROM Empleado WHERE Id_Empleado=?");
+            conn = ConexionDB.obtenerConexion();
+            ps = conn.prepareStatement("SELECT * FROM Empleado WHERE Id_Empleado=?");
             ps.setInt(1, idEmpleado);
-            ResultSet rs = ps.executeQuery();
+            rs = ps.executeQuery();
 
             if (rs.next()) {
                 JLabel lblNombre = new JLabel("Nombre: " + rs.getString("Nombre"));
@@ -68,6 +72,11 @@ public class PanelEmpleado extends JPanel {
 
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Error al cargar empleado: " + e.getMessage());
+
+        } finally {
+            try { if (rs != null) rs.close(); } catch (SQLException ignored) {}
+            try { if (ps != null) ps.close(); } catch (SQLException ignored) {}
+            try { if (conn != null) conn.close(); } catch (SQLException ignored) {}
         }
     }
 }

@@ -8,7 +8,7 @@ import java.io.File;
 public class BusquedaProductos {
 
     // Ruta absoluta de tu base de datos
-    private static final String DB_URL = "jdbc:sqlite:C:\\SqlLite\\Databases\\Farmacia.db";
+    private static final String DB_URL = "jdbc:sqlite:C:\\Users\\user\\git\\Proyecto_AED\\Proyecto_final\\DaBe\\Farmacia.db";
 
     public static void main(String[] args) {
         // Crear base de datos y tabla si no existen

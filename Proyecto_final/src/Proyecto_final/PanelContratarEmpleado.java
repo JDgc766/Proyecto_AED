@@ -48,24 +48,33 @@ public class PanelContratarEmpleado extends JPanel {
             return;
         }
 
+        PreparedStatement ps = null;
+
         try{
-            PreparedStatement ps = conn.prepareStatement(
+            ps = conn.prepareStatement(
                     "INSERT INTO Empleado (Nombre, Correo, Telefono, Direccion, Usuario, Contrasenia, Rol, Activo, Fecha_Contrato) " +
                             "VALUES (?, ?, ?, ?, ?, ?, 'VENDEDOR', 'S', DATE('now'))");
+
             ps.setString(1, txtNombre.getText());
             ps.setString(2, txtCorreo.getText());
             ps.setString(3, txtTelefono.getText());
             ps.setString(4, txtDireccion.getText());
             ps.setString(5, txtUsuario.getText());
             ps.setString(6, txtContrasenia.getText());
+            
             ps.executeUpdate();
 
-            padre.refrescarLista();  // Usamos un método seguro para refrescar
+            padre.refrescarLista();
             JOptionPane.showMessageDialog(this, "Empleado contratado correctamente");
             SwingUtilities.getWindowAncestor(this).dispose();
+
         } catch(SQLException e){
             JOptionPane.showMessageDialog(this, "Error al guardar empleado: " + e.getMessage());
             e.printStackTrace();
+
+        } finally {
+            try { if (ps != null) ps.close(); } catch (SQLException ignored) {}
+            try { if (conn != null) conn.close(); } catch (SQLException ignored) {}
         }
     }
 }

@@ -109,12 +109,12 @@ public class Interfaz extends JFrame {
                 return;
             }
 
-            Connection con = ConexionDB.obtenerConexion();
-            if (con == null) return;
+            Connection conn = ConexionDB.obtenerConexion();
+            if (conn == null) return;
 
             try {
                 String sql = "SELECT Id_Empleado, Nombre, Rol, Activo FROM Empleado WHERE Usuario = ? AND Contrasenia = ?";
-                PreparedStatement ps = con.prepareStatement(sql);
+                PreparedStatement ps = conn.prepareStatement(sql);
                 ps.setString(1, user);
                 ps.setString(2, pass);
                 ResultSet rs = ps.executeQuery();
@@ -153,7 +153,7 @@ public class Interfaz extends JFrame {
 
                 rs.close();
                 ps.close();
-                con.close();
+                conn.close();
 
             } catch (Exception ex) {
                 ex.printStackTrace();

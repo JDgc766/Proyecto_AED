@@ -14,7 +14,7 @@ public class Vendedores extends JPanel {
     private JPanel panelLista;
     private JPanel panelDetalle;
     private JScrollPane scrollLista;
-    private Connection conn;
+ 
 
     private Color colorFondo = new Color(225, 245, 254);
     private Color colorEmpleado = new Color(220, 255, 220);
@@ -23,11 +23,6 @@ public class Vendedores extends JPanel {
     public Vendedores() {
         setLayout(new CardLayout());
 
-        conn = ConexionDB.obtenerConexion();
-        if (conn == null) {
-            JOptionPane.showMessageDialog(this, "No se pudo conectar a la base de datos.");
-            return;
-        }
 
         panelLista = new JPanel();
         panelLista.setLayout(new BoxLayout(panelLista, BoxLayout.Y_AXIS));
@@ -49,11 +44,12 @@ public class Vendedores extends JPanel {
         JButton btnContratar = crearBotonRedondeado("Contratar Empleado", colorContratar, new Dimension(300,50));
         btnContratar.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnContratar.addActionListener(e -> {
-            JFrame ventana = new JFrame("Contratar Empleado");
-            ventana.setContentPane(new PanelContratarEmpleado(conn, this));
-            ventana.pack();
-            ventana.setLocationRelativeTo(null);
-            ventana.setVisible(true);
+        	 Connection conn = ConexionDB.obtenerConexion();
+             JFrame ventana = new JFrame("Contratar Empleado");
+             ventana.setContentPane(new PanelContratarEmpleado(conn, this));
+             ventana.pack();
+             ventana.setLocationRelativeTo(null);
+             ventana.setVisible(true);
         });
 
         contenedor.add(btnContratar);
@@ -151,11 +147,12 @@ public class Vendedores extends JPanel {
         JButton btnContratar = crearBotonRedondeado("Contratar Empleado", colorContratar, new Dimension(300,50));
         btnContratar.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnContratar.addActionListener(e -> {
-            JFrame ventana = new JFrame("Contratar Empleado");
-            ventana.setContentPane(new PanelContratarEmpleado(conn, this));
-            ventana.pack();
-            ventana.setLocationRelativeTo(null);
-            ventana.setVisible(true);
+        	 Connection conn = ConexionDB.obtenerConexion();
+             JFrame ventana = new JFrame("Contratar Empleado");
+             ventana.setContentPane(new PanelContratarEmpleado(conn, this));
+             ventana.pack();
+             ventana.setLocationRelativeTo(null);
+             ventana.setVisible(true);
         });
         contenedor.add(btnContratar);
         contenedor.add(Box.createVerticalStrut(20));
@@ -165,9 +162,9 @@ public class Vendedores extends JPanel {
         empleadosContenedor.setBackground(colorFondo);
 
         int fotoSize = 100;
-        try {
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery("SELECT Id_Empleado, Nombre, Rol, Foto FROM Empleado");
+        try (Connection conn = ConexionDB.obtenerConexion();
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("SELECT Id_Empleado, Nombre, Rol, Foto FROM Empleado")){            
 
             while (rs.next()) {
                 int id = rs.getInt("Id_Empleado");
