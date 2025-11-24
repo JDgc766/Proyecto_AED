@@ -2,8 +2,12 @@ package Proyecto_final;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.basic.BasicScrollBarUI;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
+import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.RoundRectangle2D;
@@ -29,10 +33,8 @@ import java.util.Map;
  */
 public class PanelProductos extends JPanel {
 
-    // === MODELO DE DATOS (única fuente de verdad) ===
-    // productosMap: id -> Producto (cargado desde BD)
+    // === MODELO DE DATOS ===
     private final Map<Integer, Producto> productosMap = new LinkedHashMap<>();
-    // carritoMap: id -> cantidad (se refiere a los mismos objetos en productosMap)
     private final Map<Integer, Integer> carritoMap = new LinkedHashMap<>();
 
     // === COMPONENTES UI ===
@@ -43,76 +45,109 @@ public class PanelProductos extends JPanel {
     private final JTable tablaFactura;
     private final JLabel lblTotal = new JLabel("Total: $0.00");
 
-    // Tamaños/estilos
     private static final Font FONT_NORMAL = new Font("Segoe UI", Font.PLAIN, 13);
     private static final Font FONT_BOLD = new Font("Segoe UI", Font.BOLD, 14);
+
+    // para hover en tabla
+    private int hoverRow = -1;
 
     public PanelProductos() {
         setLayout(new BorderLayout(12, 12));
         setBackground(new Color(250, 252, 253));
+        setOpaque(false);
         setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
 
-        // ---------- Top: búsqueda y controles ----------
         JPanel top = new JPanel(new BorderLayout(8, 8));
         top.setOpaque(false);
         JPanel busquedaPane = crearPanelBusqueda();
+        busquedaPane.setOpaque(false);
         top.add(busquedaPane, BorderLayout.WEST);
 
         JPanel botonesPane = crearPanelAccionesRapidas();
+        botonesPane.setOpaque(false);
         top.add(botonesPane, BorderLayout.EAST);
 
         add(top, BorderLayout.NORTH);
 
-        // ---------- Center: catálogo de productos (grid con scroll) ----------
+        // catálogo: usar ModifiedWrapLayout corregido
         panelCatalogo.setLayout(new ModifiedWrapLayout(FlowLayout.LEFT, 12, 12));
         panelCatalogo.setOpaque(false);
 
         scrollCatalogo = new JScrollPane(panelCatalogo,
                 JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
                 JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        
+        scrollCatalogo.setOpaque(false);
+        scrollCatalogo.getViewport().setOpaque(false);
+        scrollCatalogo.getVerticalScrollBar().setOpaque(false);
+        scrollCatalogo.getHorizontalScrollBar().setOpaque(false);
+        
         scrollCatalogo.setBorder(BorderFactory.createEmptyBorder());
         scrollCatalogo.getVerticalScrollBar().setUnitIncrement(16);
         scrollCatalogo.getVerticalScrollBar().setUI(new ModernScrollBarUI());
-
+        // evitar que el catalogo se expanda horizontalmente
+        panelCatalogo.setPreferredSize(null);
         add(scrollCatalogo, BorderLayout.CENTER);
 
-        // ---------- South: factura/carrito ----------
+        // tabla factura
         modeloFactura = new DefaultTableModel(new Object[]{"Nombre", "Precio", "Cant.", "Total"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
         };
         tablaFactura = new JTable(modeloFactura);
         tablaFactura.setFont(FONT_NORMAL);
-        tablaFactura.setRowHeight(28);
+        tablaFactura.setRowHeight(30);
         tablaFactura.getTableHeader().setFont(FONT_BOLD);
+
+        estilizarTablaFactura();
 
         JScrollPane scrollFactura = new JScrollPane(tablaFactura);
         scrollFactura.setBorder(BorderFactory.createLineBorder(new Color(220,220,220)));
-        scrollFactura.setPreferredSize(new Dimension(85, 250));
+        scrollFactura.setPreferredSize(new Dimension(100, 140)); // altura reducida y fija
 
+        // panel sur con tabla en panel redondeado
         JPanel south = new JPanel(new BorderLayout(8,8));
         south.setOpaque(false);
-        south.add(scrollFactura, BorderLayout.CENTER);
+
+        JPanel tablaPanelRedondeada = new RoundedPanel(16, Color.WHITE);
+        tablaPanelRedondeada.setLayout(new BorderLayout());
+        tablaPanelRedondeada.setBorder(new EmptyBorder(8,8,8,8));
+        tablaPanelRedondeada.add(scrollFactura, BorderLayout.CENTER);
+
+        south.add(tablaPanelRedondeada, BorderLayout.CENTER);
 
         JPanel rightSouth = new JPanel(new BorderLayout(8,8));
         rightSouth.setOpaque(false);
         lblTotal.setFont(FONT_BOLD);
         rightSouth.add(lblTotal, BorderLayout.NORTH);
 
-        JPanel botonesFactura = new JPanel(new GridLayout(3,1,8,8));
+        JPanel botonesFactura = new JPanel();
         botonesFactura.setOpaque(false);
-        botonesFactura.add(makeIconButton("🛒 " , e -> agregarSeleccionadoAlCarrito()));
-        botonesFactura.add(makeIconButton("❌ " , e -> quitarSeleccionadoDelCarrito()));
-        botonesFactura.add(makeIconButton("💰 "  , e -> ejecutarVenta()));
+        botonesFactura.setLayout(new GridLayout(3,1,10,10));
+        botonesFactura.add(makeBigButton("🛒", "Agregar", e -> agregarSeleccionadoAlCarrito()));
+        botonesFactura.add(makeBigButton("❌", "Quitar", e -> quitarSeleccionadoDelCarrito()));
+        botonesFactura.add(makeBigButton("💰", "Vender", e -> ejecutarVenta()));
         rightSouth.add(botonesFactura, BorderLayout.CENTER);
 
         south.add(rightSouth, BorderLayout.EAST);
-
         add(south, BorderLayout.SOUTH);
 
         // Carga inicial
         cargarProductosDesdeBD();
         refrescarCatalogo();
+
+        // listeners para hover en tabla
+        tablaFactura.addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                int row = tablaFactura.rowAtPoint(e.getPoint());
+                if (row != hoverRow) { hoverRow = row; tablaFactura.repaint(); }
+            }
+        });
+        tablaFactura.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseExited(MouseEvent e) { hoverRow = -1; tablaFactura.repaint(); }
+        });
     }
 
     // ---------------------- CREACIÓN DE UI ----------------------
@@ -132,7 +167,6 @@ public class PanelProductos extends JPanel {
         btnBuscar.setFont(new Font("Segoe UI Symbol", Font.BOLD, 20));
         p.add(btnBuscar);
 
-        // Buscar en cada pulsación de tecla
         txtBuscar.addKeyListener(new KeyAdapter() {
             public void keyReleased(KeyEvent e) {
                 String q = txtBuscar.getText().trim().toLowerCase();
@@ -155,7 +189,6 @@ public class PanelProductos extends JPanel {
         return p;
     }
 
-    // Botones sin borde y con texto/icono (unicode). Se usan en todo el panel.
     private JButton makeIconButton(String text, ActionListener listener) {
         JButton b = new JButton(text);
         b.setFont(FONT_BOLD);
@@ -164,6 +197,27 @@ public class PanelProductos extends JPanel {
         b.setFocusPainted(false);
         b.setCursor(new Cursor(Cursor.HAND_CURSOR));
         b.addActionListener(listener);
+        return b;
+    }
+
+    // botón grande y estilizado para la derecha
+    private JButton makeBigButton(String icon, String tooltip, ActionListener l) {
+        JButton b = new JButton(icon);
+        b.setToolTipText(tooltip);
+        b.setFont(new Font("Segoe UI Symbol", Font.BOLD, 34));
+        b.setFocusPainted(false);
+        b.setBorderPainted(false);
+        b.setBackground(new Color(232, 247, 233));
+        b.setOpaque(true);
+        b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        b.setPreferredSize(new Dimension(88, 64));
+        b.addActionListener(l);
+        b.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) { b.setBackground(new Color(200,230,200)); }
+            public void mouseExited(MouseEvent e) { b.setBackground(new Color(232,247,233)); }
+        });
+        // rounded appearance
+        b.setBorder(BorderFactory.createEmptyBorder(8,8,8,8));
         return b;
     }
 
@@ -197,7 +251,6 @@ public class PanelProductos extends JPanel {
     }
 
     // ---------------------- INTERACCIÓN CATALOGO ----------------------
-    // Refiltra productos por texto (nombre o nombreGen). Vacío = mostrar todos.
     private void aplicarFiltro(String q) {
         panelCatalogo.removeAll();
         for (Producto p : productosMap.values()) {
@@ -213,10 +266,8 @@ public class PanelProductos extends JPanel {
         aplicarFiltro("");
     }
 
-    // Agrega el producto seleccionado por foco (el ultimo ProductCard con foco)
-    // Para simplificar, usamos la selección visual: cada ProductCard tiene un botón "Agregar".
     private void agregarSeleccionadoAlCarrito() {
-        // método auxiliar: no se usa directamente porque cada tarjeta ya ofrece agregar.
+        // helper no usado: las tarjetas tienen su propio botón agregado
     }
 
     // ---------------------- CARRITO / FACTURA ----------------------
@@ -237,7 +288,6 @@ public class PanelProductos extends JPanel {
         int fila = tablaFactura.getSelectedRow();
         if (fila == -1) { JOptionPane.showMessageDialog(this, "Seleccione un item en la factura."); return; }
         String nombre = (String) modeloFactura.getValueAt(fila, 0);
-        // Buscar el id por nombre (no ideal si nombres duplicados; alternativa: extender modelo para guardar id oculto)
         Integer idEncontrado = null;
         for (Map.Entry<Integer, Producto> e : productosMap.entrySet()) {
             if (e.getValue().nombre.equals(nombre)) { idEncontrado = e.getKey(); break; }
@@ -248,12 +298,9 @@ public class PanelProductos extends JPanel {
         }
     }
 
-    private void quitarSeleccionadoDelCarrito() {
-        quitarDelCarritoPorFilaSeleccionada();
-    }
+    private void quitarSeleccionadoDelCarrito() { quitarDelCarritoPorFilaSeleccionada(); }
 
     private void sincronizarTablaFactura() {
-        // Mantener una sola verdad: carritoMap
         modeloFactura.setRowCount(0);
         double subtotal = 0;
         for (Map.Entry<Integer,Integer> e : carritoMap.entrySet()) {
@@ -273,7 +320,7 @@ public class PanelProductos extends JPanel {
         for (Map.Entry<Integer,Integer> e : carritoMap.entrySet()) {
             Producto p = productosMap.get(e.getKey());
             int qty = e.getValue();
-            sb.append(p.nombre).append("	").append(qty).append("	$").append(p.precioVenta * qty).append("\n");
+            sb.append(p.nombre).append("	").append(qty).append("	$").append(p.precioVenta * qty).append("");
             total += p.precioVenta * qty;
         }
         sb.append("\nTOTAL: $").append(total).append("\n=================");
@@ -289,11 +336,10 @@ public class PanelProductos extends JPanel {
             if (conn == null) return;
             conn.setAutoCommit(false);
 
-            // Insertar venta
             PreparedStatement psVenta = conn.prepareStatement(
                     "INSERT INTO Venta (Fecha, Id_Empleado) VALUES (DATE('now'), ?)",
                     java.sql.Statement.RETURN_GENERATED_KEYS);
-            psVenta.setInt(1, 1); // OJO: en producción pasar id empleado real
+            psVenta.setInt(1, 1);
             psVenta.executeUpdate();
             ResultSet rsKeys = psVenta.getGeneratedKeys();
             int idVenta = rsKeys.next() ? rsKeys.getInt(1) : 0;
@@ -325,10 +371,8 @@ public class PanelProductos extends JPanel {
             psDetalle.close();
             conn.commit();
 
-            // Mostrar factura simple
             mostrarVentanaFactura();
 
-            // limpiar carrito y refrescar datos
             carritoMap.clear();
             sincronizarTablaFactura();
             cargarProductosDesdeBD();
@@ -341,7 +385,6 @@ public class PanelProductos extends JPanel {
     }
 
     // ---------------------- COMPONENTES AUXILIARES ----------------------
-    // Tarjeta de producto con imagen, descripción, stock y botón "Agregar".
     private class ProductoCard extends JPanel {
         Producto producto;
 
@@ -354,6 +397,9 @@ public class PanelProductos extends JPanel {
             setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createLineBorder(new Color(230,230,230)),
                     BorderFactory.createEmptyBorder(8,8,8,8)));
+
+            // sombra ligera
+            setOpaque(false);
 
             // Imagen
             JLabel lblImg = new JLabel();
@@ -403,6 +449,9 @@ public class PanelProductos extends JPanel {
             });
             btnAdd.setFont(new Font("Segoe UI Symbol", Font.BOLD, 18));
             btnAdd.setToolTipText("Agregar al carrito");
+            btnAdd.setBackground(new Color(232,247,233));
+            btnAdd.setOpaque(true);
+            btnAdd.setBorder(BorderFactory.createEmptyBorder(6,8,6,8));
             pie.add(btnAdd, BorderLayout.EAST);
 
             add(pie, BorderLayout.SOUTH);
@@ -412,6 +461,20 @@ public class PanelProductos extends JPanel {
                 public void mouseEntered(MouseEvent e) { setBackground(new Color(245, 250, 255)); }
                 public void mouseExited(MouseEvent e) { setBackground(Color.WHITE); }
             });
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            // dibujar fondo redondeado con sombra ligera
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int arc = 12;
+            g2.setColor(new Color(255,255,255));
+            g2.fillRoundRect(0, 4, getWidth(), getHeight()-6, arc, arc);
+            g2.setColor(new Color(230,230,230));
+            g2.drawRoundRect(0, 4, getWidth()-1, getHeight()-7, arc, arc);
+            g2.dispose();
+            super.paintComponent(g);
         }
     }
 
@@ -447,8 +510,6 @@ public class PanelProductos extends JPanel {
     private static class ModernScrollBarUI extends BasicScrollBarUI {
         private final Color thumbColor = new Color(179, 215, 168); // verde pastel
 
-      //  @Override protected void configureScrollBarColors() { thumb = thumbColor; }
-
         @Override
         protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds) {
             Graphics2D g2 = (Graphics2D) g.create();
@@ -472,11 +533,74 @@ public class PanelProductos extends JPanel {
         private JButton createZeroButton() { JButton b = new JButton(); b.setPreferredSize(new Dimension(0,0)); b.setMinimumSize(new Dimension(0,0)); b.setMaximumSize(new Dimension(0,0)); return b; }
     }
 
-    // ---------------------- UTIL ----------------------
+    // Panel redondeado reusable
+    private static class RoundedPanel extends JPanel {
+        private final int arc;
+        private final Color backgroundColor;
+        RoundedPanel(int arc, Color bg) { this.arc = arc; this.backgroundColor = bg; setOpaque(false); }
+        @Override protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(backgroundColor);
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
+
+    // ---------------------- UTIL - ESTILO TABLA ----------------------
+    private void estilizarTablaFactura() {
+        tablaFactura.setShowGrid(false);
+        tablaFactura.setIntercellSpacing(new Dimension(0,0));
+        tablaFactura.setFillsViewportHeight(true);
+        tablaFactura.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        // header
+        JTableHeader header = tablaFactura.getTableHeader();
+        header.setDefaultRenderer(new HeaderRenderer(header.getDefaultRenderer()));
+        header.setReorderingAllowed(false);
+        header.setResizingAllowed(false);
+        header.setOpaque(false);
+
+        // renderer para filas
+        tablaFactura.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (isSelected) {
+                    c.setBackground(new Color(200, 230, 200));
+                    c.setForeground(Color.BLACK);
+                } else if (row == hoverRow) {
+                    c.setBackground(new Color(240, 255, 245));
+                    c.setForeground(Color.BLACK);
+                } else {
+                    if (row % 2 == 0) c.setBackground(new Color(250, 255, 250));
+                    else c.setBackground(new Color(244, 250, 244));
+                    c.setForeground(new Color(30,60,40));
+                }
+                setBorder(BorderFactory.createEmptyBorder(6,10,6,10));
+                return c;
+            }
+        });
+    }
+
+    private static class HeaderRenderer implements TableCellRenderer {
+        private final TableCellRenderer delegate;
+        HeaderRenderer(TableCellRenderer del) { delegate = del; }
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            Component c = delegate.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            c.setBackground(new Color(235,250,235));
+            c.setForeground(new Color(30,80,40));
+            c.setFont(FONT_BOLD);
+            if (c instanceof JComponent) ((JComponent)c).setBorder(BorderFactory.createEmptyBorder(8,10,8,10));
+            return c;
+        }
+    }
+
     private static String escapeHtml(String s) { return s == null ? "" : s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;"); }
 
-    // Layout 'wrap' sencillo que funciona mejor que GridLayout para tarjetas reponsive
-    // (Minimal implementación - no dependencias externas)
+    // Layout 'wrap' corregido que funciona mejor en JScrollPane
     private static class ModifiedWrapLayout extends FlowLayout {
         public ModifiedWrapLayout(int align, int hgap, int vgap) { super(align, hgap, vgap); }
         public Dimension preferredLayoutSize(Container target) { return layoutSize(target, true); }
@@ -484,7 +608,11 @@ public class PanelProductos extends JPanel {
         private Dimension layoutSize(Container target, boolean preferred) {
             synchronized (target.getTreeLock()) {
                 int targetWidth = target.getWidth();
-                if (targetWidth == 0) targetWidth = Integer.MAX_VALUE;
+                if (targetWidth <= 0) {
+                    Container parent = target.getParent();
+                    if (parent != null) targetWidth = parent.getWidth();
+                    if (targetWidth <= 0) targetWidth = Integer.MAX_VALUE/2;
+                }
                 int hgap = getHgap(), vgap = getVgap();
                 Insets insets = target.getInsets();
                 int maxWidth = targetWidth - (insets.left + insets.right + hgap*2);

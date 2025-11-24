@@ -14,7 +14,7 @@ public class Vendedores extends JPanel {
     private JPanel panelLista;
     private JPanel panelDetalle;
     private JScrollPane scrollLista;
- 
+    private Connection conn;
 
     private Color colorFondo = new Color(225, 245, 254);
     private Color colorEmpleado = new Color(220, 255, 220);
@@ -23,12 +23,16 @@ public class Vendedores extends JPanel {
     public Vendedores() {
         setLayout(new CardLayout());
 
+        conn = ConexionDB.obtenerConexion();
+        if (conn == null) {
+            JOptionPane.showMessageDialog(this, "No se pudo conectar a la base de datos.");
+            return;
+        }
 
         panelLista = new JPanel();
         panelLista.setLayout(new BoxLayout(panelLista, BoxLayout.Y_AXIS));
         panelLista.setBackground(colorFondo);
 
-        // Contenedor principal
         JPanel contenedor = new JPanel();
         contenedor.setLayout(new BoxLayout(contenedor, BoxLayout.Y_AXIS));
         contenedor.setBackground(colorFondo);
@@ -44,12 +48,11 @@ public class Vendedores extends JPanel {
         JButton btnContratar = crearBotonRedondeado("Contratar Empleado", colorContratar, new Dimension(300,50));
         btnContratar.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnContratar.addActionListener(e -> {
-        	 Connection conn = ConexionDB.obtenerConexion();
-             JFrame ventana = new JFrame("Contratar Empleado");
-             ventana.setContentPane(new PanelContratarEmpleado(conn, this));
-             ventana.pack();
-             ventana.setLocationRelativeTo(null);
-             ventana.setVisible(true);
+            JFrame ventana = new JFrame("Contratar Empleado");
+            ventana.setContentPane(new PanelContratarEmpleado(conn, this));
+            ventana.pack();
+            ventana.setLocationRelativeTo(null);
+            ventana.setVisible(true);
         });
 
         contenedor.add(btnContratar);
@@ -101,6 +104,11 @@ public class Vendedores extends JPanel {
 
         add(scrollLista, "lista");
         add(panelDetalle, "detalle");
+        
+        JPanel panelContratar = new PanelContratarEmpleado(conn, this);
+        panelContratar.setBackground(colorFondo);
+        add(panelContratar, "contratar");
+
     }
 
     // Método auxiliar para crear botones redondeados
@@ -147,12 +155,8 @@ public class Vendedores extends JPanel {
         JButton btnContratar = crearBotonRedondeado("Contratar Empleado", colorContratar, new Dimension(300,50));
         btnContratar.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnContratar.addActionListener(e -> {
-        	 Connection conn = ConexionDB.obtenerConexion();
-             JFrame ventana = new JFrame("Contratar Empleado");
-             ventana.setContentPane(new PanelContratarEmpleado(conn, this));
-             ventana.pack();
-             ventana.setLocationRelativeTo(null);
-             ventana.setVisible(true);
+        	CardLayout cl = (CardLayout) getLayout();
+            cl.show(this, "contratar");
         });
         contenedor.add(btnContratar);
         contenedor.add(Box.createVerticalStrut(20));
@@ -162,9 +166,9 @@ public class Vendedores extends JPanel {
         empleadosContenedor.setBackground(colorFondo);
 
         int fotoSize = 100;
-        try (Connection conn = ConexionDB.obtenerConexion();
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("SELECT Id_Empleado, Nombre, Rol, Foto FROM Empleado")){            
+        try {
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT Id_Empleado, Nombre, Rol, Foto FROM Empleado");
 
             while (rs.next()) {
                 int id = rs.getInt("Id_Empleado");
@@ -226,12 +230,17 @@ public class Vendedores extends JPanel {
                 textoPanel.add(textos);
                 tarjeta.add(textoPanel, BorderLayout.CENTER);
 
-                // Botón del empleado redondeado
                 JButton btnEmpleado = crearBotonRedondeado("", colorEmpleado, new Dimension(620,130));
                 btnEmpleado.setLayout(new BorderLayout());
                 btnEmpleado.add(tarjeta, BorderLayout.CENTER);
-                btnEmpleado.addActionListener(e -> mostrarEmpleado(id));
-
+                btnEmpleado.addActionListener(e -> {
+                    panelDetalle.removeAll();
+                    panelDetalle.add(new PanelDetalleEmpleado(this, conn, id), BorderLayout.CENTER);
+                    CardLayout cl = (CardLayout) getLayout();
+                    cl.show(this, "detalle");
+                    panelDetalle.revalidate();
+                    panelDetalle.repaint();
+                });
                 JPanel btnWrapper = new JPanel();
                 btnWrapper.setLayout(new BoxLayout(btnWrapper, BoxLayout.X_AXIS));
                 btnWrapper.setBackground(colorFondo);
@@ -253,14 +262,6 @@ public class Vendedores extends JPanel {
         repaint();
     }
 
-    private void mostrarEmpleado(int idEmpleado) {
-        panelDetalle.removeAll();
-        panelDetalle.add(new PanelEmpleado(this, idEmpleado), BorderLayout.CENTER);
-        CardLayout cl = (CardLayout) getLayout();
-        cl.show(this, "detalle");
-        revalidate();
-        repaint();
-    }
 
     public void volverLista() {
         CardLayout cl = (CardLayout) getLayout();
