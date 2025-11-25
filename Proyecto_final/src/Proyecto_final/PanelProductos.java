@@ -2,6 +2,7 @@ package Proyecto_final;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
+import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -155,18 +156,56 @@ public class PanelProductos extends JPanel {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         p.setOpaque(false);
 
-        JTextField txtBuscar = new JTextField(30);
-        txtBuscar.setFont(FONT_NORMAL);
+        // ======== Campo de búsqueda moderno ========
+        JTextField txtBuscarOr = new JTextField(28);
+        JTextField txtBuscar = redondearTextField(txtBuscarOr);
+        txtBuscar.setFont(FONT_NORMAL.deriveFont(15f));
         txtBuscar.setToolTipText("Buscar por nombre o genérico...");
+        txtBuscar.setOpaque(false);
+
+        txtBuscar.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
+
+        txtBuscar.setBackground(new Color(255, 255, 255, 180));  // blanco semitransparente
+        txtBuscar.setForeground(Color.DARK_GRAY);
+
+        txtBuscar.setPreferredSize(new Dimension(260, 40));
+
+        // redondear el TextField
+        //txtBuscar = redondearTextField(txtBuscar);
+
         p.add(txtBuscar);
 
-        JButton btnBuscar = makeIconButton("🔍", e -> {
+        // ======== Botón moderno de búsqueda ========
+        JButton btnBuscar = new JButton("🔍");
+        btnBuscar.setFont(new Font("Segoe UI Symbol", Font.BOLD, 15));
+        btnBuscar.setFocusPainted(false);
+        btnBuscar.setBorderPainted(false);
+        btnBuscar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        btnBuscar.setBackground(new Color(0, 150, 136));
+        btnBuscar.setForeground(Color.WHITE);
+        btnBuscar.setOpaque(true);
+
+        btnBuscar.setPreferredSize(new Dimension(50, 40));
+
+        // hover
+        btnBuscar.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { 
+                btnBuscar.setBackground(new Color(0, 180, 160)); 
+            }
+            @Override public void mouseExited(MouseEvent e) { 
+                btnBuscar.setBackground(new Color(0, 150, 136)); 
+            }
+        });
+
+        btnBuscar.addActionListener(e -> {
             String q = txtBuscar.getText().trim().toLowerCase();
             aplicarFiltro(q);
         });
-        btnBuscar.setFont(new Font("Segoe UI Symbol", Font.BOLD, 20));
+
         p.add(btnBuscar);
 
+        // ======== Búsqueda en tiempo real ========
         txtBuscar.addKeyListener(new KeyAdapter() {
             public void keyReleased(KeyEvent e) {
                 String q = txtBuscar.getText().trim().toLowerCase();
@@ -177,21 +216,37 @@ public class PanelProductos extends JPanel {
         return p;
     }
 
+
     private JPanel crearPanelAccionesRapidas() {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         p.setOpaque(false);
 
-        p.add(makeIconButton("🧾 Ver Factura", e -> mostrarVentanaFactura()));
-        p.add(makeIconButton("🔄 Refresecar", e -> {
+        p.add(makeIconButton("🔧", "Editar", e -> abrirPanelDetalle()));
+        p.add(makeIconButton("📃", "Ver Factura", e -> mostrarVentanaFactura()));
+        p.add(makeIconButton("🔄", "Refrescar", e -> {
             cargarProductosDesdeBD();
             refrescarCatalogo();
         }));
         return p;
     }
 
-    private JButton makeIconButton(String text, ActionListener listener) {
+    private JButton makeIconButton(String text, String tooltip, ActionListener listener) {
         JButton b = new JButton(text);
-        b.setFont(FONT_BOLD);
+        b.setToolTipText(tooltip);
+        b.setFont(new Font("Segoe UI Symbol", Font.BOLD, 25));
+        b.setBorderPainted(false);
+        b.setContentAreaFilled(false);
+        b.setFocusPainted(false);
+        b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        b.setPreferredSize(new Dimension(70, 60));
+        b.addActionListener(listener);
+        return b;
+    }
+    
+    private JButton makeIconButtonUI(String text, String tooltip, ActionListener listener) {
+        JButton b = new JButton(text);
+        b.setToolTipText(tooltip);
+        b.setFont(new Font("Segoe UI Symbol", Font.BOLD, 20));
         b.setBorderPainted(false);
         b.setContentAreaFilled(false);
         b.setFocusPainted(false);
@@ -438,7 +493,7 @@ public class PanelProductos extends JPanel {
             lblStock.setFont(new Font("Segoe UI", Font.PLAIN, 11));
             pie.add(lblStock, BorderLayout.CENTER);
 
-            JButton btnAdd = makeIconButton("➕", e -> {
+            JButton btnAdd = makeIconButtonUI("➕", "Agregar al carrito", e -> {
                 String entrada = JOptionPane.showInputDialog(PanelProductos.this, "Cantidad:", "1");
                 if (entrada == null) return;
                 try {
@@ -636,4 +691,49 @@ public class PanelProductos extends JPanel {
             }
         }
     }
+    
+    private JTextField redondearTextField(JTextField tf) {
+        return new JTextField(tf.getText()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                g2.setColor(new Color(255,255,255,200)); // fondo suave
+                g2.fillRoundRect(0,0,getWidth(),getHeight(),20,20);
+
+                super.paintComponent(g);
+                g2.dispose();
+            }
+
+            @Override
+            public void setBorder(Border border) { /* bloquear border externo */ }
+        };
+    }
+
+    
+    private void abrirPanelDetalle() {
+        Window window = SwingUtilities.getWindowAncestor(this);
+
+        JDialog dialog = new JDialog(window, "Administrar Productos", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setSize(1100, 700);
+        dialog.setLocationRelativeTo(window);
+
+        // Crear el panel que ya tienes en canvas
+        PanelDetalleProducto panel = new PanelDetalleProducto();
+
+        dialog.setContentPane(panel);
+        dialog.setVisible(true);
+
+        // Si quieres refrescar catálogo cuando se cierra:
+        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                cargarProductosDesdeBD();
+                refrescarCatalogo();
+            }
+        });
+    }
+
 }
