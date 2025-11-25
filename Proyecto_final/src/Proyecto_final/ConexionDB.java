@@ -5,7 +5,7 @@ import javax.swing.*;
 
 public class ConexionDB {
 
-    // Agregamos busy_timeout para evitar SQLITE_BUSY
+    // Agregamos busy_timeout para evitar SQLITE_BUSY, si
     private static final String DB_URL =
             "jdbc:sqlite:DaBe/Farmacia.db?busy_timeout=5000";
 
