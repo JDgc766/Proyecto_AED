@@ -14,6 +14,7 @@ public class Vendedores extends JPanel {
     private JPanel panelLista;
     private JPanel panelDetalle;
     private JScrollPane scrollLista;
+    //Skibidi
     private Connection conn;
 
     private Color colorFondo = new Color(225, 245, 254);
