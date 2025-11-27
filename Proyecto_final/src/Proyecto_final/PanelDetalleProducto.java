@@ -1,4 +1,4 @@
-package Proyecto_final;
+package Proyecto_final;	
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -135,8 +135,8 @@ public class PanelDetalleProducto extends JPanel {
     // ======================= CARGA DE DATOS =======================
     private void cargarProductosDesdeBD(boolean includeInactivos) {
         productosMap.clear();
-        String sql = "SELECT Id_Producto, Nombre, Nombre_Generico, Farmaceutica, Gramaje, " +
-                "Precio_Venta, Stock, Foto_Producto, Activo FROM Producto" +
+        String sql = "SELECT Id_Producto, Nombre, Nombre_Generico, Farmaceutica, Gramaje, Fecha_Caducidad, " + 
+                "Precio_Compra, Precio_Venta, Stock, Foto_Producto, Activo FROM Producto" +
                 (includeInactivos ? "" : " WHERE Activo='S'");
         try (Connection conn = ConexionDB.obtenerConexion();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -148,12 +148,14 @@ public class PanelDetalleProducto extends JPanel {
                 String nombreGen = rs.getString("Nombre_Generico");
                 String farm = rs.getString("Farmaceutica");
                 String gram = rs.getString("Gramaje");
+                String cad = rs.getString("Fecha_Caducidad");
+                double precioC = rs.getDouble("Precio_Compra");
                 double precio = rs.getDouble("Precio_Venta");
                 int stock = rs.getInt("Stock");
                 byte[] foto = rs.getBytes("Foto_Producto");
                 boolean activo = "S".equalsIgnoreCase(rs.getString("Activo"));
 
-                Producto p = new Producto(id,nombre,nombreGen,farm,gram,precio,stock,foto,activo);
+                Producto p = new Producto(id,nombre,nombreGen,farm,gram,cad,precioC,precio,stock,foto,activo);
                 productosMap.put(id,p);
             }
         } catch (Exception ex) {
@@ -187,7 +189,7 @@ public class PanelDetalleProducto extends JPanel {
 
     // ======================= EDITOR / NUEVO PRODUCTO =======================
     private void abrirEditorNuevo() {
-        Producto nuevo = new Producto(0,"","", "", "", 0.0, 0, null, true);
+        Producto nuevo = new Producto(0,"","", "", "", "", 0.0, 0.0, 0, null, true);
         abrirEditor(nuevo, true);
     }
 
@@ -199,7 +201,7 @@ public class PanelDetalleProducto extends JPanel {
                 isNew ? "Nuevo Producto" : "Editar Producto",
                 Dialog.ModalityType.APPLICATION_MODAL
         );
-        dlg.setSize(900, 600);
+        dlg.setSize(950, 700);
         dlg.setLocationRelativeTo(this);
 
         JPanel content = new JPanel();
@@ -244,6 +246,14 @@ public class PanelDetalleProducto extends JPanel {
         JLabel lblGram = crearLabel("Gramaje:");
         JTextField txtGram = crearTextField(p.gramaje == null ? "" : p.gramaje);
         agregarCampo(form, gbc, row++, lblGram, txtGram);
+        
+        JLabel lblCad = crearLabel("Fecha de caducidad:");
+        JTextField txtCad = crearTextField(p.gramaje == null ? "" : p.caducidad);
+        agregarCampo(form, gbc, row++, lblCad, txtCad);
+        
+        JLabel lblPrecioC = crearLabel("Precio Compra:");
+        JTextField txtPrecioC = crearTextField(String.valueOf(p.precioCompra));
+        agregarCampo(form, gbc, row++, lblPrecioC, txtPrecioC);
 
         JLabel lblPrecio = crearLabel("Precio:");
         JTextField txtPrecio = crearTextField(String.valueOf(p.precioVenta));
@@ -337,11 +347,13 @@ public class PanelDetalleProducto extends JPanel {
         btnGuardar.addActionListener(ev -> {
             try {
                 String nombreN = txtNombre.getText().trim();
+                double precioCN = Double.parseDouble(txtPrecioC.getText().trim());
                 double precioN = Double.parseDouble(txtPrecio.getText().trim());
                 int stockN = Integer.parseInt(txtStock.getText().trim());
                 String genN = txtGen.getText().trim();
                 String farmN = txtFarm.getText().trim();
                 String gramN = txtGram.getText().trim();
+                String cadN = txtCad.getText().trim();
                 boolean activoN = chkActivo.isSelected();
 
                 if (nombreN.isEmpty()) {
@@ -352,30 +364,34 @@ public class PanelDetalleProducto extends JPanel {
                 if (isNew) {
                     try (Connection conn = ConexionDB.obtenerConexion();
                          PreparedStatement ps = conn.prepareStatement(
-                                 "INSERT INTO Producto (Nombre, Nombre_Generico, Farmaceutica, Gramaje, Precio_Venta, Stock, Foto_Producto, Activo) " +
-                                         "VALUES (?,?,?,?,?,?,?,?)")) {
+                                 "INSERT INTO Producto (Nombre, Nombre_Generico, Farmaceutica, Gramaje, Fecha_Caducidad, Precio_Compra, Precio_Venta, Stock, Foto_Producto, Activo) " +
+                                         "VALUES (?,?,?,?,?,?,?,?,?,?)")) {
                         ps.setString(1, nombreN);
                         ps.setString(2, genN);
                         ps.setString(3, farmN);
                         ps.setString(4, gramN);
-                        ps.setDouble(5, precioN);
-                        ps.setInt(6, stockN);
-                        if (imgBytes[0] != null) ps.setBytes(7, imgBytes[0]); else ps.setNull(7, java.sql.Types.BLOB);
-                        ps.setString(8, activoN ? "S" : "N");
+                        ps.setString(5, cadN);
+                        ps.setDouble(6, precioCN);
+                        ps.setDouble(7, precioN);
+                        ps.setInt(8, stockN);
+                        if (imgBytes[0] != null) ps.setBytes(9, imgBytes[0]); else ps.setNull(9, java.sql.Types.BLOB);
+                        ps.setString(10, activoN ? "S" : "N");
                         ps.executeUpdate();
                     }
                 } else {
                     try (Connection conn = ConexionDB.obtenerConexion();
                          PreparedStatement ps = conn.prepareStatement(
-                                 "UPDATE Producto SET Nombre=?, Nombre_Generico=?, Farmaceutica=?, Gramaje=?, Precio_Venta=?, Stock=?, Activo=? WHERE Id_Producto=?")) {
+                                 "UPDATE Producto SET Nombre=?, Nombre_Generico=?, Farmaceutica=?, Gramaje=?, Fecha_Caducidad=?, Precio_Compra=?, Precio_Venta=?, Stock=?, Activo=? WHERE Id_Producto=?")) {
                         ps.setString(1, nombreN);
                         ps.setString(2, genN);
                         ps.setString(3, farmN);
                         ps.setString(4, gramN);
-                        ps.setDouble(5, precioN);
-                        ps.setInt(6, stockN);
-                        ps.setString(7, activoN ? "S" : "N");
-                        ps.setInt(8, p.id);
+                        ps.setString(5, cadN);
+                        ps.setDouble(6, precioCN);
+                        ps.setDouble(7, precioN);
+                        ps.setInt(8, stockN);
+                        ps.setString(9, activoN ? "S" : "N");
+                        ps.setInt(10, p.id);
                         ps.executeUpdate();
                     }
                     if (imgBytes[0] != null) {
@@ -517,13 +533,15 @@ public class PanelDetalleProducto extends JPanel {
         String nombreGenerico;
         String farmaceutica;
         String gramaje;
+        String caducidad;
+        double precioCompra;
         double precioVenta;
         int stock;
         byte[] foto;
         boolean activo;
-        Producto(int id,String n,String ng,String f,String g,double p,int s,byte[] ft,boolean a){
+        Producto(int id,String n,String ng,String f,String g, String cad,double pc,double p,int s,byte[] ft,boolean a){
             this.id=id; this.nombre=n; this.nombreGenerico=ng; this.farmaceutica=f;
-            this.gramaje=g; this.precioVenta=p; this.stock=s; this.foto=ft; this.activo=a;
+            this.gramaje=g; this.caducidad=cad; this.precioCompra = pc; this.precioVenta=p; this.stock=s; this.foto=ft; this.activo=a;
         }
     }
 
