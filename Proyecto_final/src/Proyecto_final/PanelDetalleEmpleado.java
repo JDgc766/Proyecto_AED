@@ -1,192 +1,212 @@
 package Proyecto_final;
 
 import javax.swing.*;
-import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.plaf.basic.BasicScrollBarUI;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.sql.*;
 import javax.imageio.ImageIO;
+import java.awt.geom.Ellipse2D;
 
 public class PanelDetalleEmpleado extends JPanel {
 
     private int idEmpleado;
     private Connection conn;
-    private Vendedores vendedoresPanel;
-
-    // Campos editables
-    private JTextField txtNombre, txtCorreo, txtTelefono, txtDireccion, txtUsuario, txtContrasenia, txtIdentificacion, txtFechaContrato, txtFechaBaja;
-    private JComboBox<String> cbRol, cbActivo;
     private JLabel lblFoto;
-    private byte[] fotoBytes; // Foto actual
+    private byte[] fotoBytes;
 
-    public PanelDetalleEmpleado(Vendedores vendedoresPanel, Connection conn, int idEmpleado) {
-        this.vendedoresPanel = vendedoresPanel;
+    private Font fuente = new Font("Segoe UI", Font.BOLD, 22);
+    private Color colorFondo = new Color(225, 245, 254);
+
+    public PanelDetalleEmpleado(Connection conn, int idEmpleado) {
         this.conn = conn;
         this.idEmpleado = idEmpleado;
 
         setLayout(new BorderLayout());
-        setBackground(new Color(225, 245, 254));
+        setBackground(colorFondo);
 
         cargarDetalles();
     }
 
     private void cargarDetalles() {
-        try {
-            PreparedStatement ps = conn.prepareStatement(
-                    "SELECT * FROM Empleado WHERE Id_Empleado = ?"
-            );
+
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT * FROM Empleado WHERE Id_Empleado = ?")) {
+
             ps.setInt(1, idEmpleado);
-            ResultSet rs = ps.executeQuery();
 
-            if (rs.next()) {
-                // Panel de campos
-                JPanel panelCampos = new JPanel(new GridBagLayout());
-                panelCampos.setBackground(new Color(225, 245, 254));
-                panelCampos.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-                GridBagConstraints gbc = new GridBagConstraints();
-                gbc.insets = new Insets(5, 5, 5, 5);
-                gbc.fill = GridBagConstraints.HORIZONTAL;
-                gbc.anchor = GridBagConstraints.WEST;
+            try (ResultSet rs = ps.executeQuery()) {
 
-                // Campos
-                txtNombre = new JTextField(rs.getString("Nombre"));
-                txtCorreo = new JTextField(rs.getString("Correo"));
-                txtTelefono = new JTextField(rs.getString("Telefono"));
-                txtDireccion = new JTextField(rs.getString("Direccion"));
-                txtUsuario = new JTextField(rs.getString("Usuario"));
-                txtContrasenia = new JTextField(rs.getString("Contrasenia"));
-                txtIdentificacion = new JTextField(rs.getString("identificacion") != null ? rs.getString("identificacion") : "");
-                txtFechaContrato = new JTextField(rs.getString("Fecha_Contrato"));
-                txtFechaBaja = new JTextField(rs.getString("Fecha_Baja") != null ? rs.getString("Fecha_Baja") : "");
+                if (rs.next()) {
 
-                cbRol = new JComboBox<>(new String[]{"GERENTE", "VENDEDOR"});
-                cbRol.setSelectedItem(rs.getString("Rol"));
+                    JPanel panelPrincipal = new JPanel();
+                    panelPrincipal.setLayout(new BoxLayout(panelPrincipal, BoxLayout.Y_AXIS));
+                    panelPrincipal.setBackground(colorFondo);
+                    panelPrincipal.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-                cbActivo = new JComboBox<>(new String[]{"S", "N"});
-                cbActivo.setSelectedItem(rs.getString("Activo"));
+                    // ================= TITULO =================
+                    JLabel lblTitulo = new JLabel("Detalles del empleado", SwingConstants.CENTER);
+                    lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 28));
+                    lblTitulo.setForeground(new Color(34, 139, 34)); // verde
+                    lblTitulo.setAlignmentX(CENTER_ALIGNMENT);
+                    lblTitulo.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+                    panelPrincipal.add(lblTitulo);
 
-                // Foto
-                lblFoto = new JLabel();
-                lblFoto.setPreferredSize(new Dimension(150, 150));
-                lblFoto.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-                fotoBytes = rs.getBytes("Foto");
-                mostrarFoto(fotoBytes);
+                    // ================= FOTO + NOMBRE =================
+                    lblFoto = new JLabel();
+                    lblFoto.setPreferredSize(new Dimension(250, 250));
+                    fotoBytes = rs.getBytes("Foto");
+                    if (fotoBytes != null) {
+                        mostrarFotoCircular(fotoBytes);
+                    } else {
+                        try {
+                            BufferedImage fallback = ImageIO.read(getClass().getResource("/imagenes/person.png"));
+                            lblFoto.setIcon(new ImageIcon(hacerCircular(fallback, 250)));
+                        } catch (Exception ex) {
+                            lblFoto.setIcon(null);
+                        }
+                    }
 
-                JButton btnCambiarFoto = new JButton("Cambiar Foto");
-                btnCambiarFoto.addActionListener(e -> seleccionarFoto());
+                    JLabel lblNombre = new JLabel(rs.getString("Nombre"));
+                    lblNombre.setFont(new Font("Segoe UI", Font.BOLD, 28));
+                    lblNombre.setForeground(new Color(30, 30, 30));
 
-                // Labels y campos
-                String[] labels = {"Nombre", "Correo", "Teléfono", "Dirección", "Usuario", "Contraseña",
-                        "Rol", "Activo", "Fecha Contrato", "Fecha Baja", "Identificación"};
-                JComponent[] fields = {txtNombre, txtCorreo, txtTelefono, txtDireccion, txtUsuario, txtContrasenia,
-                        cbRol, cbActivo, txtFechaContrato, txtFechaBaja, txtIdentificacion};
+                    JPanel panelFotoNombre = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 0));
+                    panelFotoNombre.setBackground(colorFondo);
+                    panelFotoNombre.add(lblFoto);
+                    panelFotoNombre.add(lblNombre);
+                    panelPrincipal.add(panelFotoNombre);
+                    panelPrincipal.add(Box.createVerticalStrut(20));
 
-                for (int i = 0; i < labels.length; i++) {
-                    gbc.gridx = 0;
-                    gbc.gridy = i;
-                    panelCampos.add(new JLabel(labels[i] + ":"), gbc);
-                    gbc.gridx = 1;
-                    panelCampos.add(fields[i], gbc);
+                    // ================= CAMPOS =================
+                    JPanel panelCampos = new JPanel(new GridBagLayout());
+                    panelCampos.setBackground(colorFondo);
+                    panelCampos.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+
+                    GridBagConstraints gbc = new GridBagConstraints();
+                    gbc.insets = new Insets(12, 10, 12, 10);
+                    gbc.anchor = GridBagConstraints.WEST;
+
+                    String[] labels = {
+                            "Correo", "Teléfono", "Dirección",
+                            "Usuario", "Contraseña", "Rol",
+                            "Activo", "Fecha Contrato",
+                            "Fecha Baja", "Identificación"
+                    };
+
+                    String[] datos = {
+                            rs.getString("Correo"),
+                            rs.getString("Telefono"),
+                            rs.getString("Direccion"),
+                            rs.getString("Usuario"),
+                            rs.getString("Contrasenia"),
+                            rs.getString("Rol"),
+                            rs.getString("Activo"),
+                            rs.getString("Fecha_Contrato"),
+                            rs.getString("Fecha_Baja") != null ? rs.getString("Fecha_Baja") : "Sin baja",
+                            rs.getString("identificacion") != null ? rs.getString("identificacion") : "No asignada"
+                    };
+
+                    for (int i = 0; i < labels.length; i++) {
+                        gbc.gridx = 0;
+                        gbc.gridy = i;
+
+                        JLabel lblTituloCampo = new JLabel(labels[i] + ":");
+                        lblTituloCampo.setFont(fuente);
+                        lblTituloCampo.setForeground(Color.DARK_GRAY);
+                        panelCampos.add(lblTituloCampo, gbc);
+
+                        gbc.gridx = 1;
+                        JLabel lblDato = new JLabel(datos[i]);
+                        lblDato.setFont(fuente);
+                        lblDato.setForeground(Color.BLACK);
+                        panelCampos.add(lblDato, gbc);
+                    }
+
+                    panelPrincipal.add(panelCampos);
+
+                    // ================= BOTON =================
+                    JButton btnEditar = new JButton("Editar campos");
+                    btnEditar.setFont(fuente);
+                    btnEditar.setBackground(Color.BLACK);
+                    btnEditar.setForeground(Color.WHITE);
+                    btnEditar.setFocusPainted(false);
+                    btnEditar.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));
+                    btnEditar.setAlignmentX(Component.RIGHT_ALIGNMENT);
+
+                    // Solo pasamos el idEmpleado, FrameEditarEmpleado abrirá su propia conexión
+                    btnEditar.addActionListener(e -> new FrameEditarEmpleado(idEmpleado, this, conn).setVisible(true));
+
+                    panelPrincipal.add(Box.createVerticalStrut(20));
+                    panelPrincipal.add(btnEditar);
+
+                    // ================= SCROLL =================
+                    JScrollPane scroll = new JScrollPane(panelPrincipal);
+                    scroll.setBorder(null);
+                    scroll.getVerticalScrollBar().setUI(new BasicScrollBarUI() {
+                        @Override
+                        protected JButton createDecreaseButton(int orientation) { return createZeroButton(); }
+                        @Override
+                        protected JButton createIncreaseButton(int orientation) { return createZeroButton(); }
+                        private JButton createZeroButton() {
+                            JButton jbutton = new JButton();
+                            jbutton.setPreferredSize(new Dimension(0,0));
+                            jbutton.setMinimumSize(new Dimension(0,0));
+                            jbutton.setMaximumSize(new Dimension(0,0));
+                            return jbutton;
+                        }
+                        @Override
+                        protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
+                            g.setColor(colorFondo);
+                            g.fillRect(trackBounds.x, trackBounds.y, trackBounds.width, trackBounds.height);
+                        }
+                        @Override
+                        protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds) {
+                            Graphics2D g2 = (Graphics2D) g.create();
+                            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                            g2.setPaint(new Color(100, 149, 237, 180));
+                            g2.fillRoundRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height, 10, 10);
+                            g2.dispose();
+                        }
+                    });
+
+                    add(scroll, BorderLayout.CENTER);
+
                 }
-
-                // Panel foto a la derecha
-                JPanel panelFoto = new JPanel();
-                panelFoto.setLayout(new BoxLayout(panelFoto, BoxLayout.Y_AXIS));
-                panelFoto.setBackground(new Color(225, 245, 254));
-                panelFoto.add(lblFoto);
-                panelFoto.add(Box.createVerticalStrut(10));
-                panelFoto.add(btnCambiarFoto);
-
-                // Panel principal
-                JPanel panelCentral = new JPanel(new BorderLayout());
-                panelCentral.add(panelCampos, BorderLayout.CENTER);
-                panelCentral.add(panelFoto, BorderLayout.EAST);
-
-                // Botones
-                JPanel panelBotones = new JPanel();
-                JButton btnGuardar = new JButton("Guardar");
-                btnGuardar.addActionListener(e -> guardarCambios());
-
-                JButton btnVolver = new JButton("Volver");
-                btnVolver.addActionListener(e -> vendedoresPanel.volverLista());
-
-                panelBotones.add(btnGuardar);
-                panelBotones.add(btnVolver);
-
-                add(panelCentral, BorderLayout.CENTER);
-                add(panelBotones, BorderLayout.SOUTH);
-            } else {
-                add(new JLabel("Empleado no encontrado"), BorderLayout.CENTER);
             }
 
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Error al cargar detalles: " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    private void mostrarFoto(byte[] bytes) {
+    private void mostrarFotoCircular(byte[] bytes) {
         try {
             if (bytes != null) {
-                BufferedImage img = ImageIO.read(new ByteArrayInputStream(bytes));
-                ImageIcon icon = new ImageIcon(img.getScaledInstance(150, 150, Image.SCALE_SMOOTH));
-                lblFoto.setIcon(icon);
-            } else {
-                lblFoto.setIcon(null);
+                BufferedImage original = ImageIO.read(new ByteArrayInputStream(bytes));
+                BufferedImage circular = hacerCircular(original, 250);
+                lblFoto.setIcon(new ImageIcon(circular));
             }
         } catch (Exception e) {
             lblFoto.setIcon(null);
         }
     }
 
-    private void seleccionarFoto() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setFileFilter(new FileNameExtensionFilter("Imágenes", "jpg", "jpeg", "png"));
-        int res = chooser.showOpenDialog(this);
-        if (res == JFileChooser.APPROVE_OPTION) {
-            File archivo = chooser.getSelectedFile();
-            try {
-                FileInputStream fis = new FileInputStream(archivo);
-                fotoBytes = fis.readAllBytes();
-                fis.close();
-                mostrarFoto(fotoBytes);
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Error al cargar la foto: " + ex.getMessage());
-            }
-        }
+    private BufferedImage hacerCircular(BufferedImage imagen, int diametro) {
+        BufferedImage mask = new BufferedImage(diametro, diametro, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = mask.createGraphics();
+        g2.setClip(new Ellipse2D.Float(0, 0, diametro, diametro));
+        g2.drawImage(imagen, 0, 0, diametro, diametro, null);
+        g2.dispose();
+        return mask;
     }
 
-    private void guardarCambios() {
-        try {
-            PreparedStatement ps = conn.prepareStatement(
-                    "UPDATE Empleado SET Nombre=?, Correo=?, Telefono=?, Direccion=?, Usuario=?, Contrasenia=?, Rol=?, Activo=?, Fecha_Contrato=?, Fecha_Baja=?, identificacion=?, Foto=? WHERE Id_Empleado=?"
-            );
-            ps.setString(1, txtNombre.getText());
-            ps.setString(2, txtCorreo.getText());
-            ps.setString(3, txtTelefono.getText());
-            ps.setString(4, txtDireccion.getText());
-            ps.setString(5, txtUsuario.getText());
-            ps.setString(6, txtContrasenia.getText());
-            ps.setString(7, (String) cbRol.getSelectedItem());
-            ps.setString(8, (String) cbActivo.getSelectedItem());
-            ps.setString(9, txtFechaContrato.getText());
-            ps.setString(10, txtFechaBaja.getText().isEmpty() ? null : txtFechaBaja.getText());
-            ps.setString(11, txtIdentificacion.getText());
-            if (fotoBytes != null) {
-                ps.setBytes(12, fotoBytes);
-            } else {
-                ps.setNull(12, Types.BLOB);
-            }
-            ps.setInt(13, idEmpleado);
-
-            ps.executeUpdate();
-            JOptionPane.showMessageDialog(this, "Datos guardados correctamente.");
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Error al guardar: " + e.getMessage());
-            e.printStackTrace();
-        }
+    public void recargar() {
+        removeAll();
+        cargarDetalles();
+        revalidate();
+        repaint();
     }
 }

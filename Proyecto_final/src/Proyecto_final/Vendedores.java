@@ -48,11 +48,8 @@ public class Vendedores extends JPanel {
         JButton btnContratar = crearBotonRedondeado("Contratar Empleado", colorContratar, new Dimension(300,50));
         btnContratar.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnContratar.addActionListener(e -> {
-            JFrame ventana = new JFrame("Contratar Empleado");
-            ventana.setContentPane(new PanelContratarEmpleado(conn, this));
-            ventana.pack();
-            ventana.setLocationRelativeTo(null);
-            ventana.setVisible(true);
+            CardLayout cl = (CardLayout) getLayout();
+            cl.show(this, "contratar");
         });
 
         contenedor.add(btnContratar);
@@ -111,7 +108,6 @@ public class Vendedores extends JPanel {
 
     }
 
-    // Método auxiliar para crear botones redondeados
     private JButton crearBotonRedondeado(String texto, Color fondo, Dimension tamaño) {
         JButton btn = new JButton(texto) {
             @Override
@@ -119,15 +115,12 @@ public class Vendedores extends JPanel {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(fondo);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20); // radio esquinas
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
                 super.paintComponent(g2);
                 g2.dispose();
             }
-
             @Override
-            public void setBorder(Border border) {
-                // Ignorar bordes
-            }
+            public void setBorder(Border border) {}
         };
         btn.setContentAreaFilled(false);
         btn.setFocusPainted(false);
@@ -155,7 +148,7 @@ public class Vendedores extends JPanel {
         JButton btnContratar = crearBotonRedondeado("Contratar Empleado", colorContratar, new Dimension(300,50));
         btnContratar.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnContratar.addActionListener(e -> {
-        	CardLayout cl = (CardLayout) getLayout();
+            CardLayout cl = (CardLayout) getLayout();
             cl.show(this, "contratar");
         });
         contenedor.add(btnContratar);
@@ -166,9 +159,8 @@ public class Vendedores extends JPanel {
         empleadosContenedor.setBackground(colorFondo);
 
         int fotoSize = 100;
-        try {
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery("SELECT Id_Empleado, Nombre, Rol, Foto FROM Empleado");
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT Id_Empleado, Nombre, Rol, Foto FROM Empleado")) {
 
             while (rs.next()) {
                 int id = rs.getInt("Id_Empleado");
@@ -191,9 +183,7 @@ public class Vendedores extends JPanel {
                 } else {
                     java.net.URL imgURL = GerenteUIModerno.class.getResource("/imagenes/person.png");
                     if (imgURL != null) {
-                        icon = new ImageIcon(imgURL);
-                        Image img = icon.getImage().getScaledInstance(fotoSize, fotoSize, Image.SCALE_SMOOTH);
-                        icon = new ImageIcon(img);
+                        icon = new ImageIcon(new ImageIcon(imgURL).getImage().getScaledInstance(fotoSize,fotoSize,Image.SCALE_SMOOTH));
                     } else {
                         icon = new ImageIcon();
                     }
@@ -235,7 +225,7 @@ public class Vendedores extends JPanel {
                 btnEmpleado.add(tarjeta, BorderLayout.CENTER);
                 btnEmpleado.addActionListener(e -> {
                     panelDetalle.removeAll();
-                    panelDetalle.add(new PanelDetalleEmpleado(this, conn, id), BorderLayout.CENTER);
+                    panelDetalle.add(new PanelDetalleEmpleado(conn, id), BorderLayout.CENTER);
                     CardLayout cl = (CardLayout) getLayout();
                     cl.show(this, "detalle");
                     panelDetalle.revalidate();
@@ -261,7 +251,6 @@ public class Vendedores extends JPanel {
         revalidate();
         repaint();
     }
-
 
     public void volverLista() {
         CardLayout cl = (CardLayout) getLayout();
