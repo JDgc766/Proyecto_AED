@@ -113,16 +113,17 @@ public class Interfaz extends JFrame {
             if (conn == null) return;
 
             try {
-                String sql = "SELECT Id_Empleado, Nombre, Rol, Activo FROM Empleado WHERE Usuario = ? AND Contrasenia = ?";
+                String sql = "SELECT Id_Empleado, Nombre, Rol, Activo, Foto FROM Empleado WHERE Usuario = ? AND Contrasenia = ?";
                 PreparedStatement ps = conn.prepareStatement(sql);
                 ps.setString(1, user);
                 ps.setString(2, pass);
                 ResultSet rs = ps.executeQuery();
 
                 if (rs.next()) {
-                    int idEmpleado = rs.getInt("Id_Empleado");
-                    String nombreEmpleado = rs.getString("Nombre");
                     String rol = rs.getString("Rol");
+                    String nombreEmpleado = rs.getString("Nombre");
+                    int idEmpleado = rs.getInt("Id_Empleado");
+                    byte[] fotoEmpleado = rs.getBytes("Foto"); // <--- Aquí obtienes la foto (BLOB)
                     String activo = rs.getString("Activo");
 
                     if (!activo.equals("S")) {
@@ -131,16 +132,13 @@ public class Interfaz extends JFrame {
                     }
 
                     if (rol.equals("GERENTE")) {
-                        // Mostrar mensaje y luego abrir GerenteUIModerno
-                        Interfaz.this.setEnabled(false);
-                        Runnable abrirVentanaGerente = () -> {
-                            GerenteUIModerno gerente = new GerenteUIModerno();
-                            gerente.setVisible(true);
-                            Interfaz.this.dispose();
-                        };
-                        new Mensajes(Interfaz.this, "¡Bienvenido Don Jairo!", abrirVentanaGerente);
+                        new Mensajes(Interfaz.this, "¡Bienvenido, " + nombreEmpleado + "!");
+                        GerenteUIModerno gerente = new GerenteUIModerno(rol, nombreEmpleado, fotoEmpleado, idEmpleado);
+                        gerente.setVisible(true);
+                        Interfaz.this.dispose();
 
                     } else if (rol.equals("VENDEDOR")) {
+                        // Aquí podrías crear VendedorUI o mostrar mensaje
                         new Mensajes(Interfaz.this, "¡Bienvenido, " + nombreEmpleado + "!");
                     } else {
                         JOptionPane.showMessageDialog(null, "Rol no reconocido.");
@@ -160,6 +158,7 @@ public class Interfaz extends JFrame {
                 JOptionPane.showMessageDialog(null, "Error al consultar la base de datos");
             }
         });
+
 
 
         panelLogin.add(lblUsuario);

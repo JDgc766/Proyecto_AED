@@ -9,12 +9,13 @@ public class GerenteUIModerno extends JFrame {
     private final Color COLOR_PANEL = Color.WHITE;
     private final Color COLOR_BOTON = Color.WHITE;
     private final Color COLOR_TEXTO_BOTON = Color.BLACK;
-    private final Color COLOR_HOVER = new Color(200, 200, 200); 
+    private final Color COLOR_HOVER = new Color(200, 200, 200);
     private final Font FUENTE_GLOBAL = new Font("Segoe UI", Font.PLAIN, 16);
 
     private JPanel panelDerecho;
 
-    public GerenteUIModerno() {
+    // Constructor adaptado para rol, nombre y foto del usuario
+    public GerenteUIModerno(String rol, String nombreEmpleado, byte[] fotoEmpleado, int idEmpleado) {
         setUndecorated(true);
         setSize(1000, 700);
         setLocationRelativeTo(null);
@@ -22,22 +23,42 @@ public class GerenteUIModerno extends JFrame {
         setLayout(new BorderLayout());
         setExtendedState(JFrame.MAXIMIZED_BOTH);
 
+        // PANEL LATERAL
         JPanel panelMenu = new JPanel();
         panelMenu.setBackground(COLOR_PANEL);
         panelMenu.setPreferredSize(new Dimension(250, getHeight()));
         panelMenu.setLayout(new BoxLayout(panelMenu, BoxLayout.Y_AXIS));
         panelMenu.setBorder(BorderFactory.createEmptyBorder(40, 20, 40, 20));
 
+        // PANEL PERFIL
         JPanel panelPerfil = new JPanel();
         panelPerfil.setBackground(COLOR_PANEL);
         panelPerfil.setLayout(new BoxLayout(panelPerfil, BoxLayout.Y_AXIS));
 
-        ImageIcon iconPerfil = new ImageIcon(getClass().getResource("/imagenes/person.png"));
-        Image imgPerfil = iconPerfil.getImage().getScaledInstance(100, 100, Image.SCALE_SMOOTH);
+        // Tamaño de la foto: máximo 150 px, o lo que permita el ancho del panel
+        int anchoMaxPanel = 230;
+        int tamañoFoto = Math.min(anchoMaxPanel, 150);
+
+        // Imagen de perfil
+        Image imgPerfil;
+        if (fotoEmpleado != null) {
+            try {
+                imgPerfil = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(fotoEmpleado));
+            } catch (Exception e) {
+                ImageIcon iconDefault = new ImageIcon(getClass().getResource("/imagenes/person.png"));
+                imgPerfil = iconDefault.getImage();
+            }
+        } else {
+            ImageIcon iconDefault = new ImageIcon(getClass().getResource("/imagenes/person.png"));
+            imgPerfil = iconDefault.getImage();
+        }
+
+        imgPerfil = imgPerfil.getScaledInstance(tamañoFoto, tamañoFoto, Image.SCALE_SMOOTH);
         JLabel lblImagenPerfil = new JLabel(new ImageIcon(imgPerfil));
         lblImagenPerfil.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel lblUsuario = new JLabel("Usuario: Gerente", SwingConstants.CENTER);
+        // Nombre de usuario
+        JLabel lblUsuario = new JLabel(nombreEmpleado, SwingConstants.CENTER);
         lblUsuario.setFont(FUENTE_GLOBAL.deriveFont(Font.BOLD, 18f));
         lblUsuario.setForeground(Color.BLACK);
         lblUsuario.setOpaque(true);
@@ -45,6 +66,7 @@ public class GerenteUIModerno extends JFrame {
         lblUsuario.setAlignmentX(Component.CENTER_ALIGNMENT);
         lblUsuario.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
 
+        panelPerfil.add(Box.createVerticalStrut(10));
         panelPerfil.add(lblImagenPerfil);
         panelPerfil.add(Box.createVerticalStrut(10));
         panelPerfil.add(lblUsuario);
@@ -54,6 +76,7 @@ public class GerenteUIModerno extends JFrame {
         separador.setForeground(Color.BLACK);
         separador.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
 
+        // PANEL BOTONES
         JPanel panelBotones = new JPanel();
         panelBotones.setBackground(COLOR_PANEL);
         panelBotones.setLayout(new BoxLayout(panelBotones, BoxLayout.Y_AXIS));
@@ -69,6 +92,7 @@ public class GerenteUIModerno extends JFrame {
 
         add(panelMenu, BorderLayout.WEST);
 
+        // PANEL DERECHO
         panelDerecho = new JPanel();
         panelDerecho.setLayout(new BorderLayout());
         panelDerecho.setBackground(COLOR_FONDO);
@@ -97,6 +121,7 @@ public class GerenteUIModerno extends JFrame {
         panelDerecho.add(panelInicio, BorderLayout.CENTER);
         add(panelDerecho, BorderLayout.CENTER);
 
+        // CREAR BOTONES DEL MENU
         for (int i = 0; i < opciones.length; i++) {
             String texto = opciones[i];
             final String textoFinal = texto;
@@ -136,6 +161,13 @@ public class GerenteUIModerno extends JFrame {
             boton.setFont(FUENTE_GLOBAL.deriveFont(Font.BOLD, 18f));
             boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
+            // Deshabilitar botones según rol
+            if (rol.equals("VENDEDOR")) {
+                if (textoFinal.equals("Vendedores") || textoFinal.equals("Anuncios")) {
+                    boton.setEnabled(false);
+                }
+            }
+
             boton.addActionListener(e -> {
                 if (textoFinal.equals("Cerrar sesión")) {
                     new Interfaz().setVisible(true);
@@ -150,11 +182,8 @@ public class GerenteUIModerno extends JFrame {
                         panelDerecho.add(new PanelProductos(), BorderLayout.CENTER);
                         break;
                     case "Vendedores":
-                    	panelDerecho.removeAll();
                         Vendedores vPanel = new Vendedores();
                         panelDerecho.add(vPanel, BorderLayout.CENTER);
-                        panelDerecho.revalidate();
-                        panelDerecho.repaint();
                         break;
                     case "Reportes":
                         break;
@@ -171,9 +200,5 @@ public class GerenteUIModerno extends JFrame {
         }
 
         setVisible(true);
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(GerenteUIModerno::new);
     }
 }
