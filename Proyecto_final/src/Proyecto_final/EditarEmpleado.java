@@ -21,9 +21,6 @@ public class EditarEmpleado extends JDialog {
         JTextField txtDireccion = new JTextField();
         JTextField txtUsuario = new JTextField();
 
-        // ============================
-        //   CARGAR DATOS DEL EMPLEADO
-        // ============================
         try {
             ps = conn.prepareStatement("SELECT * FROM Empleado WHERE Id_Empleado=?");
             ps.setInt(1, idEmpleado);

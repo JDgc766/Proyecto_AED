@@ -30,7 +30,6 @@ public class PanelDetalleEmpleado extends JPanel {
     }
 
     private void cargarDetalles() {
-
         try (PreparedStatement ps = conn.prepareStatement(
                 "SELECT * FROM Empleado WHERE Id_Empleado = ?")) {
 
@@ -135,7 +134,6 @@ public class PanelDetalleEmpleado extends JPanel {
                     btnEditar.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));
                     btnEditar.setAlignmentX(Component.RIGHT_ALIGNMENT);
 
-                    // Solo pasamos el idEmpleado, FrameEditarEmpleado abrirá su propia conexión
                     btnEditar.addActionListener(e -> new FrameEditarEmpleado(idEmpleado, this, conn).setVisible(true));
 
                     panelPrincipal.add(Box.createVerticalStrut(20));
@@ -144,35 +142,14 @@ public class PanelDetalleEmpleado extends JPanel {
                     // ================= SCROLL =================
                     JScrollPane scroll = new JScrollPane(panelPrincipal);
                     scroll.setBorder(null);
-                    scroll.getVerticalScrollBar().setUI(new BasicScrollBarUI() {
-                        @Override
-                        protected JButton createDecreaseButton(int orientation) { return createZeroButton(); }
-                        @Override
-                        protected JButton createIncreaseButton(int orientation) { return createZeroButton(); }
-                        private JButton createZeroButton() {
-                            JButton jbutton = new JButton();
-                            jbutton.setPreferredSize(new Dimension(0,0));
-                            jbutton.setMinimumSize(new Dimension(0,0));
-                            jbutton.setMaximumSize(new Dimension(0,0));
-                            return jbutton;
-                        }
-                        @Override
-                        protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
-                            g.setColor(colorFondo);
-                            g.fillRect(trackBounds.x, trackBounds.y, trackBounds.width, trackBounds.height);
-                        }
-                        @Override
-                        protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds) {
-                            Graphics2D g2 = (Graphics2D) g.create();
-                            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                            g2.setPaint(new Color(100, 149, 237, 180));
-                            g2.fillRoundRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height, 10, 10);
-                            g2.dispose();
-                        }
-                    });
+
+                    // Aplicar scroll UI personalizado
+                    scroll.getVerticalScrollBar().setUI(crearScrollUI());
+                    scroll.getVerticalScrollBar().setPreferredSize(new Dimension(8, Integer.MAX_VALUE));
+                    scroll.getHorizontalScrollBar().setUI(crearScrollUI());
+                    scroll.getHorizontalScrollBar().setPreferredSize(new Dimension(Integer.MAX_VALUE, 8));
 
                     add(scroll, BorderLayout.CENTER);
-
                 }
             }
 
@@ -208,5 +185,45 @@ public class PanelDetalleEmpleado extends JPanel {
         cargarDetalles();
         revalidate();
         repaint();
+    }
+
+    // ================= SCROLL UI PERSONALIZADO =================
+    private BasicScrollBarUI crearScrollUI() {
+        return new BasicScrollBarUI() {
+            private final int grosor = 6;
+
+            @Override
+            protected JButton createDecreaseButton(int orientation) { return crearZeroButton(); }
+            @Override
+            protected JButton createIncreaseButton(int orientation) { return crearZeroButton(); }
+
+            private JButton crearZeroButton() {
+                JButton jbutton = new JButton();
+                jbutton.setPreferredSize(new Dimension(0,0));
+                jbutton.setMinimumSize(new Dimension(0,0));
+                jbutton.setMaximumSize(new Dimension(0,0));
+                return jbutton;
+            }
+
+            @Override
+            protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
+                g.setColor(colorFondo);
+                g.fillRect(trackBounds.x, trackBounds.y, trackBounds.width, trackBounds.height);
+            }
+
+            @Override
+            protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setPaint(new Color(100, 149, 237, 180));
+                g2.fillRoundRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height, grosor*2, grosor*2);
+                g2.dispose();
+            }
+
+            @Override
+            protected Dimension getMinimumThumbSize() {
+                return new Dimension(grosor, grosor);
+            }
+        };
     }
 }
