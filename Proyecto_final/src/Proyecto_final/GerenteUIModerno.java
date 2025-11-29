@@ -14,8 +14,8 @@ public class GerenteUIModerno extends JFrame {
 
     private JPanel panelDerecho;
 
-    // Constructor adaptado para rol, nombre y foto del usuario
     public GerenteUIModerno(String rol, String nombreEmpleado, byte[] fotoEmpleado, int idEmpleado) {
+    	//Aqui igual
         setUndecorated(true);
         setSize(1000, 700);
         setLocationRelativeTo(null);
@@ -23,23 +23,19 @@ public class GerenteUIModerno extends JFrame {
         setLayout(new BorderLayout());
         setExtendedState(JFrame.MAXIMIZED_BOTH);
 
-        // PANEL LATERAL
         JPanel panelMenu = new JPanel();
         panelMenu.setBackground(COLOR_PANEL);
         panelMenu.setPreferredSize(new Dimension(250, getHeight()));
         panelMenu.setLayout(new BoxLayout(panelMenu, BoxLayout.Y_AXIS));
         panelMenu.setBorder(BorderFactory.createEmptyBorder(40, 20, 40, 20));
 
-        // PANEL PERFIL
         JPanel panelPerfil = new JPanel();
         panelPerfil.setBackground(COLOR_PANEL);
         panelPerfil.setLayout(new BoxLayout(panelPerfil, BoxLayout.Y_AXIS));
 
-        // Tamaño de la foto: máximo 150 px, o lo que permita el ancho del panel
         int anchoMaxPanel = 230;
         int tamañoFoto = Math.min(anchoMaxPanel, 150);
 
-        // Imagen de perfil
         Image imgPerfil;
         if (fotoEmpleado != null) {
             try {

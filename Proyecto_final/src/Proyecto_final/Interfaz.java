@@ -123,7 +123,7 @@ public class Interfaz extends JFrame {
                     String rol = rs.getString("Rol");
                     String nombreEmpleado = rs.getString("Nombre");
                     int idEmpleado = rs.getInt("Id_Empleado");
-                    byte[] fotoEmpleado = rs.getBytes("Foto"); // <--- Aquí obtienes la foto (BLOB)
+                    byte[] fotoEmpleado = rs.getBytes("Foto"); 
                     String activo = rs.getString("Activo");
 
                     if (!activo.equals("S")) {
@@ -133,6 +133,7 @@ public class Interfaz extends JFrame {
 
                     if (rol.equals("GERENTE")) {
                         new Mensajes(Interfaz.this, "¡Bienvenido, " + nombreEmpleado + "!");
+                        //En esta parte revisa roger
                         GerenteUIModerno gerente = new GerenteUIModerno(rol, nombreEmpleado, fotoEmpleado, idEmpleado);
                         gerente.setVisible(true);
                         Interfaz.this.dispose();
