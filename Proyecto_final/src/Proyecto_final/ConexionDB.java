@@ -7,7 +7,7 @@ public class ConexionDB {
 
     // Agregamos busy_timeout para evitar SQLITE_BUSY, si
     private static final String DB_URL =
-    		"jdbc:sqlite:C:\\Prueba\\Farmacia.db?busy_timeout=5000";
+    		"jdbc:sqlite:DaBe/Farmacia.db?busy_timeout=5000";
 
     public static Connection obtenerConexion() {
         try {

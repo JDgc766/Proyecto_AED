@@ -132,15 +132,39 @@ public class Interfaz extends JFrame {
                     }
 
                     if (rol.equals("GERENTE")) {
-                        new Mensajes(Interfaz.this, "¡Bienvenido, " + nombreEmpleado + "!");
-                        //En esta parte revisa roger
-                        GerenteUIModerno gerente = new GerenteUIModerno(rol, nombreEmpleado, fotoEmpleado, idEmpleado);
-                        gerente.setVisible(true);
-                        Interfaz.this.dispose();
+                    	// Mostrar mensaje y esperar a que se cierre
+                        Mensajes bienvenida = new Mensajes(Interfaz.this, "¡Bienvenido, " + nombreEmpleado + "!");
+
+                        // Esperar a que el usuario cierre el mensaje
+                        bienvenida.addWindowListener(new java.awt.event.WindowAdapter() {
+                            @Override
+                            public void windowClosed(java.awt.event.WindowEvent e) {
+                                SwingUtilities.invokeLater(() -> {
+                                    GerenteUIModerno gerente = new GerenteUIModerno(rol, nombreEmpleado, fotoEmpleado, idEmpleado);
+                                    gerente.setVisible(true);
+                                    Interfaz.this.dispose();
+                                });
+                            }
+                        });
+
+                        bienvenida.setVisible(true);
 
                     } else if (rol.equals("VENDEDOR")) {
-                        // Aquí podrías crear VendedorUI o mostrar mensaje
-                        new Mensajes(Interfaz.this, "¡Bienvenido, " + nombreEmpleado + "!");
+                    	Mensajes bienvenida = new Mensajes(Interfaz.this, "¡Bienvenido, " + nombreEmpleado + "!");
+
+                        // Esperar a que el usuario cierre el mensaje
+                        bienvenida.addWindowListener(new java.awt.event.WindowAdapter() {
+                            @Override
+                            public void windowClosed(java.awt.event.WindowEvent e) {
+                                SwingUtilities.invokeLater(() -> {
+                                    GerenteUIModerno gerente = new GerenteUIModerno(rol, nombreEmpleado, fotoEmpleado, idEmpleado);
+                                    gerente.setVisible(true);
+                                    Interfaz.this.dispose();
+                                });
+                            }
+                        });
+
+                        bienvenida.setVisible(true);
                     } else {
                         JOptionPane.showMessageDialog(null, "Rol no reconocido.");
                         return;
@@ -182,7 +206,7 @@ public class Interfaz extends JFrame {
         add(panelImagen, BorderLayout.CENTER);
     }
 
-    public static void main(String[] args) {
+    /*public static void main(String[] args) {
         new Interfaz().setVisible(true);
-    }
+    }*/
 }
