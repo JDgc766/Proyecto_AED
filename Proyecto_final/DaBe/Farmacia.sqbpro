@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="Farmacia.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="1"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="3288"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><table title="Producto" custom_title="0" dock_id="1" table="4,8:mainProducto"/><dock_state state="000000ff00000000fd00000001000000020000039100000258fc0100000001fb000000160064006f0063006b00420072006f00770073006500310100000000000003910000012300ffffff000003910000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings><table schema="main" name="Categoria" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="82"/><column index="2" value="95"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="Empleado" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="82"/><column index="2" value="127"/><column index="3" value="167"/><column index="4" value="71"/><column index="5" value="111"/><column index="6" value="55"/><column index="7" value="76"/><column index="8" value="71"/><column index="9" value="44"/><column index="10" value="98"/><column index="11" value="73"/><column index="12" value="39"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="Presentacion" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="101"/><column index="2" value="78"/><column index="3" value="63"/><column index="4" value="79"/><column index="5" value="83"/><column index="6" value="40"/><column index="7" value="106"/><column index="8" value="91"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="Producto" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="78"/><column index="2" value="95"/><column index="3" value="109"/><column index="4" value="73"/><column index="5" value="94"/><column index="6" value="83"/><column index="7" value="106"/><column index="8" value="91"/><column index="9" value="40"/><column index="10" value="83"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table></browse_table_settings></tab_browse><tab_sql><sql name="SQL 1">-- ===============================
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="Farmacia.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="3288"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><table title="Producto" custom_title="0" dock_id="1" table="4,8:mainProducto"/><dock_state state="000000ff00000000fd00000001000000020000039100000258fc0100000001fb000000160064006f0063006b00420072006f00770073006500310100000000000003910000012300ffffff000003910000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings><table schema="main" name="Categoria" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="82"/><column index="2" value="95"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="Empleado" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="82"/><column index="2" value="127"/><column index="3" value="167"/><column index="4" value="71"/><column index="5" value="111"/><column index="6" value="55"/><column index="7" value="76"/><column index="8" value="71"/><column index="9" value="44"/><column index="10" value="98"/><column index="11" value="73"/><column index="12" value="39"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="Presentacion" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="101"/><column index="2" value="78"/><column index="3" value="63"/><column index="4" value="79"/><column index="5" value="83"/><column index="6" value="40"/><column index="7" value="106"/><column index="8" value="91"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="Producto" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="78"/><column index="2" value="95"/><column index="3" value="109"/><column index="4" value="73"/><column index="5" value="94"/><column index="6" value="83"/><column index="7" value="106"/><column index="8" value="91"/><column index="9" value="40"/><column index="10" value="83"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table></browse_table_settings></tab_browse><tab_sql><sql name="SQL 1*">-- ===============================
 -- CREACIÓN DE TABLAS
 -- ===============================
 
@@ -265,16 +265,23 @@ INSERT INTO Empleado (
     DATE('now'),                    -- Fecha de contrato
     NULL,                           -- Fecha de baja
     NULL                            -- Foto
-);
-
-ALTER TABLE Producto
-ADD COLUMN Activo TEXT NOT NULL DEFAULT 'S' 
-CHECK (Activo IN ('S','N'));
-
-ALTER TABLE Empleado
-ADD COLUMN Identificacion TEXT;
-
+);
 
+ALTER TABLE Producto
+ADD COLUMN Activo TEXT NOT NULL DEFAULT 'S' 
+CHECK (Activo IN ('S','N'));
+
+ALTER TABLE Empleado
+ADD COLUMN Identificacion TEXT;
+
+
+CREATE TABLE IF NOT EXISTS Notificacion (
+    Id_Notificacion INTEGER PRIMARY KEY AUTOINCREMENT,
+    Tipo TEXT NOT NULL,         -- STOCK_BAJO, CONTRATACION, DESPIDO, ALERTA, ETC
+    Mensaje TEXT NOT NULL,      -- Texto visible
+    Fecha TEXT NOT NULL,        -- DATE('now') o datetime
+    Leido TEXT NOT NULL DEFAULT 'N' CHECK (Leido IN ('S','N'))
+);
 
 
 

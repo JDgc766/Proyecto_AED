@@ -158,11 +158,11 @@ public class GerenteUIModerno extends JFrame {
             boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
             // Deshabilitar botones según rol
-            if (rol.equals("VENDEDOR")) {
+           /* if (rol.equals("VENDEDOR")) {
                 if (textoFinal.equals("Vendedores") || textoFinal.equals("Anuncios")) {
                     boton.setEnabled(false);
                 }
-            }
+            }*/
 
             boton.addActionListener(e -> {
                 if (textoFinal.equals("Cerrar sesión")) {
@@ -184,6 +184,8 @@ public class GerenteUIModerno extends JFrame {
                     case "Reportes":
                         break;
                     case "Anuncios":
+                    	PanelAnuncios aPanel = new PanelAnuncios();
+                    	panelDerecho.add(aPanel, BorderLayout.CENTER);
                         break;
                 }
 

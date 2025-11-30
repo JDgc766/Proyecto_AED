@@ -200,7 +200,7 @@ public class PanelContratarEmpleado extends JPanel {
         }
     }
 
-    private void guardar(){
+    private void guardar() {
         if(txtNombre.getText().isEmpty() || txtCorreo.getText().isEmpty() || txtTelefono.getText().isEmpty()
                 || txtDireccion.getText().isEmpty() || txtUsuario.getText().isEmpty() || txtContrasenia.getText().isEmpty()
                 || txtIdentificacion.getText().isEmpty()){
@@ -234,6 +234,13 @@ public class PanelContratarEmpleado extends JPanel {
                 ps.setString(7, txtIdentificacion.getText());
             }
             ps.executeUpdate();
+
+            // -------------------- NUEVO --------------------
+            // Agregar notificación de contratación
+            String mensaje = "Se ha contratado al empleado " + txtNombre.getText();
+            NotificacionManager.agregarNotificacion("CONTRATACION", mensaje);
+            // ------------------------------------------------
+
             padre.refrescarLista();
             JOptionPane.showMessageDialog(this, "Empleado contratado correctamente");
             padre.volverLista();
@@ -242,4 +249,5 @@ public class PanelContratarEmpleado extends JPanel {
             e.printStackTrace();
         }
     }
+
 }
