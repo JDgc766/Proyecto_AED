@@ -9,7 +9,7 @@ public class PanelAnuncios extends JPanel {
 
     private final Color COLOR_FONDO = new Color(225, 245, 254);
     private final Color COLOR_AVISO = Color.WHITE;
-    private final Color COLOR_NO_LEIDO = new Color(255, 230, 230);
+    private final Color COLOR_NO_LEIDO = new Color(255, 100, 100); // rojo para no leído
     private final Font FUENTE = new Font("Segoe UI", Font.PLAIN, 16);
 
     public PanelAnuncios() {
@@ -30,18 +30,31 @@ public class PanelAnuncios extends JPanel {
         scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
+
+        // Scroll moderno
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+            @Override
+            protected void configureScrollBarColors() {
+                this.thumbColor = new Color(180, 180, 180);
+            }
+        });
+
         add(scroll, BorderLayout.CENTER);
 
         ArrayList<Notificacion> lista = obtenerNotificaciones();
 
         for (Notificacion n : lista) {
-            JPanel aviso = new JPanel();
-            aviso.setLayout(null); // layout nulo
-            aviso.setBackground(n.leido.equals("N") ? COLOR_NO_LEIDO : COLOR_AVISO);
-            aviso.setBorder(BorderFactory.createLineBorder(Color.GRAY, 1));
+            JButton aviso = new JButton();
+            aviso.setLayout(null);
             aviso.setPreferredSize(new Dimension(700, 120));
             aviso.setMaximumSize(new Dimension(700, 120));
             aviso.setMinimumSize(new Dimension(700, 120));
+            aviso.setFocusPainted(false);
+            aviso.setContentAreaFilled(true);
+            aviso.setOpaque(true);
+            aviso.setBorder(BorderFactory.createLineBorder(Color.GRAY, 1));
+            aviso.setBorderPainted(true);
 
             // Tipo
             JLabel lblTipo = new JLabel(n.tipo);
@@ -55,7 +68,6 @@ public class PanelAnuncios extends JPanel {
             lblMensaje.setLineWrap(true);
             lblMensaje.setWrapStyleWord(true);
             lblMensaje.setEditable(false);
-            lblMensaje.setBackground(aviso.getBackground());
             lblMensaje.setBounds(10, 40, 680, 50);
             aviso.add(lblMensaje);
 
@@ -66,9 +78,40 @@ public class PanelAnuncios extends JPanel {
             lblFecha.setBounds(500, 10, 180, 25);
             aviso.add(lblFecha);
 
-            panelAvisos.add(aviso);
+            // Configurar color según estado
+            actualizarColor(aviso, lblMensaje, n.leido);
+
+            // Acción al presionar
+            aviso.addActionListener(e -> {
+                if (n.leido.equals("N")) {
+                    String sqlUpdate = "UPDATE Notificacion SET Leido = 'S' WHERE Id_Notificacion = ?";
+                    try (Connection conn = ConexionDB.obtenerConexion();
+                         PreparedStatement ps = conn.prepareStatement(sqlUpdate)) {
+                        ps.setInt(1, n.id);
+                        ps.executeUpdate();
+                        n.leido = "S"; // actualizar objeto local
+                        actualizarColor(aviso, lblMensaje, n.leido);
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
+                        JOptionPane.showMessageDialog(this, "Error al marcar como leído", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            });
+
+            // Contenedor centrado
+            JPanel contenedor = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+            contenedor.setBackground(COLOR_FONDO);
+            contenedor.add(aviso);
+
+            panelAvisos.add(contenedor);
             panelAvisos.add(Box.createVerticalStrut(15));
         }
+    }
+
+    private void actualizarColor(JButton btn, JTextArea txt, String leido) {
+        Color color = leido.equals("N") ? COLOR_NO_LEIDO : COLOR_AVISO;
+        btn.setBackground(color);
+        txt.setBackground(color);
     }
 
     private ArrayList<Notificacion> obtenerNotificaciones() {
@@ -97,7 +140,6 @@ public class PanelAnuncios extends JPanel {
         return lista;
     }
 
-    // Clase interna para representar cada aviso
     private static class Notificacion {
         int id;
         String tipo;

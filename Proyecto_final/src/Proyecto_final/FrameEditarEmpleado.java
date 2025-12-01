@@ -224,6 +224,19 @@ public class FrameEditarEmpleado extends JFrame {
                 fechaBaja = null;
             }
 
+            // --- VERIFICAR ESTADO ANTERIOR ---
+            String estadoAnterior = "";
+            String sqlCheck = "SELECT Activo FROM Empleado WHERE Id_Empleado=?";
+            try (PreparedStatement psCheck = conn.prepareStatement(sqlCheck)) {
+                psCheck.setInt(1, idEmpleado);
+                try (ResultSet rs = psCheck.executeQuery()) {
+                    if (rs.next()) {
+                        estadoAnterior = rs.getString("Activo");
+                    }
+                }
+            }
+
+            // --- ACTUALIZAR EMPLEADO ---
             String sql = "UPDATE Empleado SET Nombre=?, Correo=?, Telefono=?, Direccion=?, Usuario=?, Contrasenia=?," +
                     "Activo=?, Fecha_Contrato=?, Fecha_Baja=?, Identificacion=?, Foto=? WHERE Id_Empleado=?";
 
@@ -237,13 +250,19 @@ public class FrameEditarEmpleado extends JFrame {
                 ps.setString(7, activo ? "S" : "N");
                 ps.setString(8, fechaContrato);
                 if (fechaBaja != null) ps.setString(9, fechaBaja);
-                else ps.setNull(9, Types.VARCHAR);
+                else ps.setNull(9, java.sql.Types.VARCHAR);
                 ps.setString(10, txtIdentificacion.getText());
                 if (fotoBytes != null) ps.setBytes(11, fotoBytes);
-                else ps.setNull(11, Types.BLOB);
+                else ps.setNull(11, java.sql.Types.BLOB);
                 ps.setInt(12, idEmpleado);
 
                 ps.executeUpdate();
+            }
+
+            // --- CREAR NOTIFICACIÓN SOLO SI CAMBIÓ EL ESTADO ---
+            if (!estadoAnterior.equals(activo ? "S" : "N")) {
+                String mensaje = "El empleado " + txtNombre.getText() + " ha sido " + (activo ? "activado" : "desactivado") + ".";
+                NotificacionManager.agregarNotificacion("EMPLEADO_ESTADO", mensaje);
             }
 
             JOptionPane.showMessageDialog(this, "Actualizado correctamente");
@@ -255,4 +274,5 @@ public class FrameEditarEmpleado extends JFrame {
             e.printStackTrace();
         }
     }
+
 }

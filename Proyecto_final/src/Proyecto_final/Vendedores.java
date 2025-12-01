@@ -161,12 +161,14 @@ public class Vendedores extends JPanel {
 
         int fotoSize = 100;
         try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT Id_Empleado, Nombre, Rol, Foto FROM Empleado")) {
+             ResultSet rs = stmt.executeQuery("SELECT Id_Empleado, Nombre, Rol, Activo, Foto FROM Empleado")) {
 
             while (rs.next()) {
                 int id = rs.getInt("Id_Empleado");
                 String nombre = rs.getString("Nombre");
                 String rol = rs.getString("Rol");
+                String estado = rs.getString("Activo"); 
+                boolean desactivado = estado != null && estado.equalsIgnoreCase("N");
                 byte[] fotoBytes = rs.getBytes("Foto");
 
                 ImageIcon icon;
@@ -221,9 +223,23 @@ public class Vendedores extends JPanel {
                 textoPanel.add(textos);
                 tarjeta.add(textoPanel, BorderLayout.CENTER);
 
-                JButton btnEmpleado = crearBotonRedondeado("", colorEmpleado, new Dimension(620,130));
+                // ⬇️ ESTILO DE DESACTIVADO
+                if (desactivado) {
+                    tarjeta.setBorder(BorderFactory.createLineBorder(new Color(150,150,150), 2));
+                    tarjeta.setBackground(new Color(210,210,210));
+                    textoPanel.setBackground(new Color(210,210,210));
+                    textos.setBackground(new Color(210,210,210));
+                    lblNombre.setForeground(new Color(90,90,90));
+                    lblRol.setForeground(new Color(110,110,110));
+                }
+
+                // Fondo del botón según activado/desactivado
+                Color fondoBtn = desactivado ? new Color(220,220,220) : colorEmpleado;
+
+                JButton btnEmpleado = crearBotonRedondeado("", fondoBtn, new Dimension(620,130));
                 btnEmpleado.setLayout(new BorderLayout());
                 btnEmpleado.add(tarjeta, BorderLayout.CENTER);
+
                 btnEmpleado.addActionListener(e -> {
                     panelDetalle.removeAll();
                     panelDetalle.add(new PanelDetalleEmpleado(conn, id), BorderLayout.CENTER);
@@ -232,6 +248,7 @@ public class Vendedores extends JPanel {
                     panelDetalle.revalidate();
                     panelDetalle.repaint();
                 });
+
                 JPanel btnWrapper = new JPanel();
                 btnWrapper.setLayout(new BoxLayout(btnWrapper, BoxLayout.X_AXIS));
                 btnWrapper.setBackground(colorFondo);
@@ -252,6 +269,7 @@ public class Vendedores extends JPanel {
         revalidate();
         repaint();
     }
+
 
     public void volverLista() {
         CardLayout cl = (CardLayout) getLayout();
