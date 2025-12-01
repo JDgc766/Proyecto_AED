@@ -4,16 +4,31 @@ import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.plaf.basic.BasicComboPopup;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
+
+/*import Proyecto_final.PanelDetalleProducto.ModernComboRenderer;
+import Proyecto_final.PanelDetalleProducto.ModernScrollBarUI;
+import Proyecto_final.PanelDetalleProducto.RoundedLineBorder;
+
+/*import Proyecto_final.PanelDetalleProducto.ModernComboBoxUI;
+
+import Proyecto_final.PanelDetalleProducto.ModernComboRenderer;
+import Proyecto_final.PanelDetalleProducto.ModernScrollBarUI;
+import Proyecto_final.PanelDetalleProducto.RoundedLineBorder;*/
+
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -37,6 +52,9 @@ public class PanelProductos extends JPanel {
     // === MODELO DE DATOS ===
     private final Map<Integer, Producto> productosMap = new LinkedHashMap<>();
     private final Map<Integer, Integer> carritoMap = new LinkedHashMap<>();
+    private final Map<String, Integer> categoriasMap = new LinkedHashMap<>();
+    private JComboBox<String> comboFiltroCat;
+
 
     // === COMPONENTES UI ===
     private final JPanel panelCatalogo = new JPanel();
@@ -45,14 +63,23 @@ public class PanelProductos extends JPanel {
     private final DefaultTableModel modeloFactura;
     private final JTable tablaFactura;
     private final JLabel lblTotal = new JLabel("Total: $0.00");
+    private final JTextField txtBuscar = new JTextField(30);
 
-    private static final Font FONT_NORMAL = new Font("Segoe UI", Font.PLAIN, 13);
+    private static final Font FONT_NORMAL = new Font("Segoe UI", Font.PLAIN, 16);
     private static final Font FONT_BOLD = new Font("Segoe UI", Font.BOLD, 14);
 
     // para hover en tabla
     private int hoverRow = -1;
+    
+    private String rolUsuario;
+    private int idEmpleado;
+    private String nombreEmpleado;
 
-    public PanelProductos() {
+    public PanelProductos(String rol, int idempleado, String nombre) {
+    	this.rolUsuario = rol;
+    	this.idEmpleado = idempleado;
+    	this.nombreEmpleado = nombre;
+    	
         setLayout(new BorderLayout(12, 12));
         setBackground(new Color(250, 252, 253));
         setOpaque(false);
@@ -150,80 +177,137 @@ public class PanelProductos extends JPanel {
             public void mouseExited(MouseEvent e) { hoverRow = -1; tablaFactura.repaint(); }
         });
     }
+    
+    private boolean coincideCategoriaProducto(Producto p, String categoriaSel) {
+        try (Connection conn = ConexionDB.obtenerConexion();
+             PreparedStatement ps = conn.prepareStatement(
+                 "SELECT Id_Categoria FROM Producto WHERE Id_Producto = ?")
+        ) {
+            ps.setInt(1, p.id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                int idCat = rs.getInt(1);
+                return categoriasMap.get(categoriaSel) == idCat;
+            }
+        } catch (Exception ignored) { }
+
+        return false;
+    }
+
+    
+    private void filtrarCatalogo() {
+        String q = txtBuscar.getText().trim().toLowerCase();
+        Object selObj = comboFiltroCat.getSelectedItem();
+        String categoriaSel = (selObj == null ? "Todas" : selObj.toString());
+
+        panelCatalogo.removeAll();
+
+        for (Producto p : productosMap.values()) {
+
+            boolean coincideTexto =
+                    q.isEmpty()
+                    || p.nombre.toLowerCase().contains(q)
+                    || (p.nombreGenerico != null && p.nombreGenerico.toLowerCase().contains(q));
+
+            boolean coincideCategoria =
+                    categoriaSel.equals("Todas")  // sin filtro
+                    || coincideCategoriaProducto(p, categoriaSel);
+
+            if (coincideTexto && coincideCategoria) {
+                panelCatalogo.add(new ProductoCard(p));
+            }
+        }
+
+        panelCatalogo.revalidate();
+        panelCatalogo.repaint();
+        
+        SwingUtilities.invokeLater(() -> {
+            scrollCatalogo.getViewport().revalidate();
+            scrollCatalogo.getViewport().repaint();
+        });
+        
+    }
+
 
     // ---------------------- CREACIÓN DE UI ----------------------
     private JPanel crearPanelBusqueda() {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         p.setOpaque(false);
 
-        // ======== Campo de búsqueda moderno ========
-        JTextField txtBuscarOr = new JTextField(28);
-        JTextField txtBuscar = redondearTextField(txtBuscarOr);
-        txtBuscar.setFont(FONT_NORMAL.deriveFont(15f));
-        txtBuscar.setToolTipText("Buscar por nombre o genérico...");
+        // ===== CONTENEDOR MODERNO =====
+        JPanel contBusqueda = new JPanel(new BorderLayout(6, 0));
+        contBusqueda.setOpaque(true);
+        contBusqueda.setBackground(new Color(255, 255, 255, 230));
+        contBusqueda.setBorder(BorderFactory.createCompoundBorder(
+                new RoundedLineBorder(new Color(170,170,170), 1, 14),
+                new EmptyBorder(4, 8, 4, 8)
+        ));
+
+        JLabel iconSearch = new JLabel("🔍");
+        iconSearch.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 18));
+        contBusqueda.add(iconSearch, BorderLayout.WEST);
+
+        
+        txtBuscar.setFont(FONT_NORMAL.deriveFont(16f));
         txtBuscar.setOpaque(false);
+        txtBuscar.setBorder(null);
+        txtBuscar.setPreferredSize(new Dimension(260, 28));
+        colocarPlaceholder(txtBuscar, "Buscar producto...");
+        contBusqueda.add(txtBuscar, BorderLayout.CENTER);
 
-        txtBuscar.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
+        // EVENTO DE FILTRADO
+        txtBuscar.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { filtrarCatalogo(); }
+            public void removeUpdate(DocumentEvent e) { filtrarCatalogo(); }
+            public void changedUpdate(DocumentEvent e) { filtrarCatalogo(); }
+        });       
+        p.add(contBusqueda);
 
-        txtBuscar.setBackground(new Color(255, 255, 255, 180));  // blanco semitransparente
-        txtBuscar.setForeground(Color.DARK_GRAY);
+        // ==========================
+        //     FILTRO DE CATEGORÍA
+        // ==========================
+        comboFiltroCat = new JComboBox<>();
+        comboFiltroCat.setFont(FONT_NORMAL.deriveFont(15f));
+        comboFiltroCat.setUI(new ModernComboBoxUI());
 
-        txtBuscar.setPreferredSize(new Dimension(260, 40));
+        // estilo moderno
+        comboFiltroCat.setBorder(BorderFactory.createCompoundBorder(
+                new RoundedLineBorder(new Color(170,170,170), 1, 14),
+                new EmptyBorder(6, 12, 6, 12)
+        ));
 
-        // redondear el TextField
-        //txtBuscar = redondearTextField(txtBuscar);
+        //comboFiltroCat.setRenderer(new ModernComboRenderer());
 
-        p.add(txtBuscar);
+        // cargar categorías
+        cargarCategorias();        
 
-        // ======== Botón moderno de búsqueda ========
-        JButton btnBuscar = new JButton("🔍");
-        btnBuscar.setFont(new Font("Segoe UI Symbol", Font.BOLD, 15));
-        btnBuscar.setFocusPainted(false);
-        btnBuscar.setBorderPainted(false);
-        btnBuscar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        comboFiltroCat.addItem("Todas");
+        for (String cat : categoriasMap.keySet())
+            comboFiltroCat.addItem(cat);
+        
+        comboFiltroCat.setSelectedIndex(0);
 
-        btnBuscar.setBackground(new Color(0, 150, 136));
-        btnBuscar.setForeground(Color.WHITE);
-        btnBuscar.setOpaque(true);
-
-        btnBuscar.setPreferredSize(new Dimension(50, 40));
-
-        // hover
-        btnBuscar.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) { 
-                btnBuscar.setBackground(new Color(0, 180, 160)); 
-            }
-            @Override public void mouseExited(MouseEvent e) { 
-                btnBuscar.setBackground(new Color(0, 150, 136)); 
-            }
-        });
-
-        btnBuscar.addActionListener(e -> {
-            String q = txtBuscar.getText().trim().toLowerCase();
-            aplicarFiltro(q);
-        });
-
-        p.add(btnBuscar);
-
-        // ======== Búsqueda en tiempo real ========
-        txtBuscar.addKeyListener(new KeyAdapter() {
-            public void keyReleased(KeyEvent e) {
-                String q = txtBuscar.getText().trim().toLowerCase();
-                aplicarFiltro(q);
-            }
-        });
+        comboFiltroCat.addActionListener(e -> filtrarCatalogo());
+             
+        p.add(comboFiltroCat);
+        
+       
 
         return p;
     }
+
+
 
 
     private JPanel crearPanelAccionesRapidas() {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         p.setOpaque(false);
 
-        p.add(makeIconButton("🔧", "Editar", e -> abrirPanelDetalle()));
+        if(rolUsuario.equals("GERENTE")){
+        	p.add(makeIconButton("🔧", "Editar", e -> abrirPanelDetalle()));
+        }
         p.add(makeIconButton("📃", "Ver Factura", e -> mostrarVentanaFactura()));
-        p.add(makeIconButton("🔄", "Refrescar", e -> {
+        p.add(makeIconButton("🔄", "Refrescar", e -> {        	
             cargarProductosDesdeBD();
             refrescarCatalogo();
         }));
@@ -279,7 +363,7 @@ public class PanelProductos extends JPanel {
     // ---------------------- CARGA Y MODELO ----------------------
     private void cargarProductosDesdeBD() {
         productosMap.clear();
-        String sql = "SELECT Id_Producto, Nombre, Nombre_Generico, Farmaceutica, Gramaje, Precio_Venta, Stock, Foto_Producto, Activo FROM Producto WHERE Activo = 'S' OR Activo IS NULL";
+        String sql = "SELECT Id_Producto, Nombre, Nombre_Generico, Farmaceutica, Gramaje, Precio_Venta, Stock, Foto_Producto, Activo, Id_Categoria FROM Producto WHERE Activo = 'S' OR Activo IS NULL";
         try (Connection conn = ConexionDB.obtenerConexion();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -294,8 +378,9 @@ public class PanelProductos extends JPanel {
                 int stock = rs.getInt("Stock");
                 byte[] foto = rs.getBytes("Foto_Producto");
                 boolean activo = "S".equalsIgnoreCase(rs.getString("Activo"));
+                int cat = rs.getInt("Id_Categoria");
 
-                Producto p = new Producto(id, nombre, nombreGen, farm, gram, precio, stock, foto, activo);
+                Producto p = new Producto(id, nombre, nombreGen, farm, gram, precio, stock, foto, activo, cat);
                 productosMap.put(id, p);
             }
 
@@ -315,10 +400,18 @@ public class PanelProductos extends JPanel {
         }
         panelCatalogo.revalidate();
         panelCatalogo.repaint();
+        
+        SwingUtilities.invokeLater(() -> {
+            scrollCatalogo.getViewport().revalidate();
+            scrollCatalogo.getViewport().repaint();
+        });
+        
+        
     }
 
     private void refrescarCatalogo() {
-        aplicarFiltro("");
+        aplicarFiltro("");       
+        
     }
 
     private void agregarSeleccionadoAlCarrito() {
@@ -369,20 +462,86 @@ public class PanelProductos extends JPanel {
     }
 
     private void mostrarVentanaFactura() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("===== FACTURA =====\n");
-        double total = 0;
-        for (Map.Entry<Integer,Integer> e : carritoMap.entrySet()) {
-            Producto p = productosMap.get(e.getKey());
-            int qty = e.getValue();
-            sb.append(p.nombre).append("	").append(qty).append("	$").append(p.precioVenta * qty).append("");
-            total += p.precioVenta * qty;
+
+        try {
+            // === Crear carpeta en Escritorio ===
+            String userHome = System.getProperty("user.home");
+            File carpeta = new File(userHome + File.separator + "Desktop" + File.separator + "FacturasFarmacia");
+            if (!carpeta.exists()) carpeta.mkdirs();
+
+            // === Nombre archivo con fecha ===
+            String timestamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
+            File pdfFile = new File(carpeta, "Factura_" + timestamp + ".pdf");
+
+            // === Crear documento PDF ===
+            com.itextpdf.text.Document doc = new com.itextpdf.text.Document();
+            com.itextpdf.text.pdf.PdfWriter.getInstance(doc, new java.io.FileOutputStream(pdfFile));
+
+            doc.open();
+
+            // ======= Estilos ========
+            com.itextpdf.text.Font tituloFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.HELVETICA, 20, com.itextpdf.text.Font.BOLD);
+            com.itextpdf.text.Font normalFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.HELVETICA, 12);
+            com.itextpdf.text.Font boldFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.HELVETICA, 12, com.itextpdf.text.Font.BOLD);
+
+            // ======= ENCABEZADO ========
+            doc.add(new com.itextpdf.text.Paragraph("FARMACIA JALINAS 2 DEL SECTOR DEL MAYOREO", tituloFont));
+            doc.add(new com.itextpdf.text.Paragraph("Factura de Venta", boldFont));
+            doc.add(new com.itextpdf.text.Paragraph(" ")); // espacio
+
+            // ======= DATOS EMPLEADO / FECHA ========
+            String fecha = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new java.util.Date());
+
+            doc.add(new com.itextpdf.text.Paragraph("Empleado: " + nombreEmpleado, normalFont));
+            doc.add(new com.itextpdf.text.Paragraph("ID empleado: " + idEmpleado, normalFont));
+            doc.add(new com.itextpdf.text.Paragraph("Fecha: " + fecha, normalFont));
+            doc.add(new com.itextpdf.text.Paragraph(" "));
+
+            // ======= TABLA DE PRODUCTOS ========
+            com.itextpdf.text.pdf.PdfPTable table = new com.itextpdf.text.pdf.PdfPTable(4);
+            table.setWidthPercentage(100);
+
+            table.addCell(new com.itextpdf.text.Phrase("Producto", boldFont));
+            table.addCell(new com.itextpdf.text.Phrase("Cant.", boldFont));
+            table.addCell(new com.itextpdf.text.Phrase("Precio Unit.", boldFont));
+            table.addCell(new com.itextpdf.text.Phrase("Total", boldFont));
+
+            double totalGeneral = 0;
+
+            for (Map.Entry<Integer, Integer> e : carritoMap.entrySet()) {
+                Producto p = productosMap.get(e.getKey());
+                int qty = e.getValue();
+                double total = qty * p.precioVenta;
+
+                table.addCell(new com.itextpdf.text.Phrase(p.nombre, normalFont));
+                table.addCell(new com.itextpdf.text.Phrase(String.valueOf(qty), normalFont));
+                table.addCell(new com.itextpdf.text.Phrase(String.format("$%.2f", p.precioVenta), normalFont));
+                table.addCell(new com.itextpdf.text.Phrase(String.format("$%.2f", total), normalFont));
+
+                totalGeneral += total;
+            }
+
+            doc.add(table);
+
+            // ======= TOTAL GENERAL ========
+            doc.add(new com.itextpdf.text.Paragraph(" "));
+            doc.add(new com.itextpdf.text.Paragraph("TOTAL A PAGAR: $" + String.format("%.2f", totalGeneral), tituloFont));
+
+            doc.close();
+
+            // ======= ABRIR PDF AUTOMÁTICAMENTE ========
+            Desktop.getDesktop().open(pdfFile);
+
+            JOptionPane.showMessageDialog(this,
+                    "Factura generada:\n" + pdfFile.getAbsolutePath(),
+                    "Factura PDF", JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error al generar factura PDF:\n" + ex.getMessage());
         }
-        sb.append("\nTOTAL: $").append(total).append("\n=================");
-        JTextArea area = new JTextArea(sb.toString());
-        area.setEditable(false);
-        JOptionPane.showMessageDialog(this, new JScrollPane(area), "Factura", JOptionPane.INFORMATION_MESSAGE);
     }
+
 
     private void ejecutarVenta() {
         if (carritoMap.isEmpty()) { JOptionPane.showMessageDialog(this, "El carrito está vacío"); return; }
@@ -555,9 +714,10 @@ public class PanelProductos extends JPanel {
         int stock;
         byte[] foto;
         boolean activo;
+        int idCategoria;
 
-        Producto(int id, String nombre, String nombreGenerico, String farmaceutica, String gramaje, double precioVenta, int stock, byte[] foto, boolean activo) {
-            this.id = id; this.nombre = nombre; this.nombreGenerico = nombreGenerico; this.farmaceutica = farmaceutica; this.gramaje = gramaje; this.precioVenta = precioVenta; this.stock = stock; this.foto = foto; this.activo = activo;
+        Producto(int id, String nombre, String nombreGenerico, String farmaceutica, String gramaje, double precioVenta, int stock, byte[] foto, boolean activo, int idcategoria) {
+            this.id = id; this.nombre = nombre; this.nombreGenerico = nombreGenerico; this.farmaceutica = farmaceutica; this.gramaje = gramaje; this.precioVenta = precioVenta; this.stock = stock; this.foto = foto; this.activo = activo; this.idCategoria=idcategoria;
         }
     }
 
@@ -709,6 +869,130 @@ public class PanelProductos extends JPanel {
             @Override
             public void setBorder(Border border) { /* bloquear border externo */ }
         };
+    }
+    
+    private static class RoundedLineBorder extends javax.swing.border.LineBorder {
+        private final int radius;
+        public RoundedLineBorder(Color color, int thickness, int radius) {
+            super(color, thickness, true);
+            this.radius = radius;
+        }
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(lineColor);
+            g2.drawRoundRect(x, y, width-1, height-1, radius, radius);
+            g2.dispose();
+        }
+    }
+
+    
+    private static void colocarPlaceholder(JTextField field, String placeholder) {
+        field.setText(placeholder);
+        field.setForeground(new Color(150,150,150));
+        field.addFocusListener(new FocusAdapter() {
+            @Override public void focusGained(FocusEvent e) {
+                if (field.getText().equals(placeholder)) {
+                    field.setText("");
+                    field.setForeground(Color.BLACK);
+                }
+            }
+            @Override public void focusLost(FocusEvent e) {
+                if (field.getText().trim().isEmpty()) {
+                    field.setText(placeholder);
+                    field.setForeground(new Color(150,150,150));
+                }
+            }
+        });
+    }
+    
+    private void cargarCategorias() {
+        categoriasMap.clear();
+        try (Connection conn = ConexionDB.obtenerConexion();
+             PreparedStatement ps = conn.prepareStatement("SELECT Id_Categoria, Nombre FROM Categoria ORDER BY Nombre ASC");
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                categoriasMap.put(rs.getString("Nombre"), rs.getInt("Id_Categoria"));
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error al cargar categorías: " + ex.getMessage());
+        }
+    }
+
+    private static class ModernComboBoxUI extends javax.swing.plaf.basic.BasicComboBoxUI {
+
+    	@Override
+        protected JButton createArrowButton() {
+            JButton arrow = new JButton("▼");
+            arrow.setFont(new Font("Segoe UI Symbol", Font.BOLD, 14));
+            arrow.setBorder(null);
+            arrow.setForeground(new Color(90, 90, 90));
+            arrow.setBackground(Color.WHITE);
+            arrow.setOpaque(true);
+            arrow.setFocusPainted(false);
+            return arrow;
+        }
+
+        @Override
+        public void installUI(JComponent c) {
+            super.installUI(c);
+
+            JComboBox<?> combo = (JComboBox<?>) c;
+
+            combo.setBackground(Color.WHITE);
+            combo.setForeground(Color.BLACK);
+            combo.setFocusable(false);
+
+            combo.setBorder(BorderFactory.createCompoundBorder(
+                    new RoundedLineBorder(new Color(170,170,170), 1, 12),
+                    new EmptyBorder(1,4,1,4)
+            ));
+
+            combo.setRenderer(new ModernComboRenderer());
+        }
+
+        @Override
+        protected javax.swing.plaf.basic.ComboPopup createPopup() {
+            BasicComboPopup popup = new BasicComboPopup(comboBox) {
+                @Override
+                protected JScrollPane createScroller() {
+                    JScrollPane scroll = new JScrollPane(list);
+                    scroll.setBorder(null);
+                    scroll.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+                    return scroll;
+                }
+            };
+            popup.setBorder(new RoundedLineBorder(new Color(200,200,200), 1, 14));
+            return popup;
+        }
+    }
+    
+    private static class ModernComboRenderer extends DefaultListCellRenderer {
+        @Override
+        public Component getListCellRendererComponent(
+                JList<?> list, Object value, int index,
+                boolean isSelected, boolean cellHasFocus) {
+
+            JLabel lbl = (JLabel) super.getListCellRendererComponent(
+                    list, value, index, isSelected, cellHasFocus);
+
+            lbl.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+            lbl.setBorder(new EmptyBorder(6, 8, 6, 8));
+
+            if (isSelected) {
+                lbl.setBackground(new Color(0, 150, 136));
+                lbl.setForeground(Color.WHITE);
+            } else {
+                lbl.setBackground(Color.WHITE);
+                lbl.setForeground(Color.DARK_GRAY);
+            }
+
+            return lbl;
+        }
     }
 
     

@@ -141,6 +141,7 @@ public class Interfaz extends JFrame {
                             public void windowClosed(java.awt.event.WindowEvent e) {
                                 SwingUtilities.invokeLater(() -> {
                                     GerenteUIModerno gerente = new GerenteUIModerno(rol, nombreEmpleado, fotoEmpleado, idEmpleado);
+                                    
                                     gerente.setVisible(true);
                                     Interfaz.this.dispose();
                                 });

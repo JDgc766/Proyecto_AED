@@ -13,8 +13,22 @@ public class GerenteUIModerno extends JFrame {
     private final Font FUENTE_GLOBAL = new Font("Segoe UI", Font.PLAIN, 16);
 
     private JPanel panelDerecho;
+    
+    private String rolUsuario;
+    private String nombre;
+    private byte[] foto;
+    private int idEmpleado;
 
-    public GerenteUIModerno(String rol, String nombreEmpleado, byte[] fotoEmpleado, int idEmpleado) {
+    public GerenteUIModerno(String rol, String nombreEmpleado, byte[] fotoEmpleado, int idempleado) {
+    	this.rolUsuario = rol;
+        this.nombre = nombreEmpleado;
+        this.foto = fotoEmpleado;
+        this.idEmpleado = idempleado;
+        
+        String rolus = rol;
+        int Idempleado = idempleado;
+        String nombre = nombreEmpleado; 
+    	
     	//Aqui igual
         setUndecorated(true);
         setSize(1000, 700);
@@ -158,11 +172,11 @@ public class GerenteUIModerno extends JFrame {
             boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
             // Deshabilitar botones según rol
-           /* if (rol.equals("VENDEDOR")) {
+            if (rol.equals("VENDEDOR")) {
                 if (textoFinal.equals("Vendedores") || textoFinal.equals("Anuncios")) {
                     boton.setEnabled(false);
                 }
-            }*/
+            }
 
             boton.addActionListener(e -> {
                 if (textoFinal.equals("Cerrar sesión")) {
@@ -175,7 +189,7 @@ public class GerenteUIModerno extends JFrame {
 
                 switch (textoFinal) {
                     case "Productos":
-                        panelDerecho.add(new PanelProductos(), BorderLayout.CENTER);
+                        panelDerecho.add(new PanelProductos(rolus, Idempleado, nombre), BorderLayout.CENTER);
                         break;
                     case "Vendedores":
                         Vendedores vPanel = new Vendedores();

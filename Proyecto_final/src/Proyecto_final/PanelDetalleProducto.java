@@ -6,6 +6,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.plaf.basic.BasicComboPopup;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -20,6 +21,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+
 
 /**
  * PanelDetalleProducto
@@ -35,9 +40,12 @@ import java.util.Map;
 public class PanelDetalleProducto extends JPanel {
 
     private final Map<Integer, Producto> productosMap = new LinkedHashMap<>();
+    private Map<String, Integer> categoriasMap = new LinkedHashMap<>();
     private final JPanel panelCatalogo = new JPanel();
     private final JScrollPane scrollCatalogo;
     private final JTextField txtBuscar = new JTextField(30);
+    private JComboBox<String> comboFiltroCat;
+
 
     private final Color COLOR_FONDO = new Color(225, 245, 254);
     private static final Font FUENTE_GLOBAL = new Font("Segoe UI", Font.PLAIN, 16);
@@ -51,10 +59,11 @@ public class PanelDetalleProducto extends JPanel {
         setOpaque(true);
 
         // ---------- TOP: título + barra de búsqueda + botón nuevo ----------
-        JPanel top = new JPanel(new BorderLayout(8,8));
+        JPanel top = new JPanel(new BorderLayout());
         top.setOpaque(false);
+        top.setBorder(new EmptyBorder(12, 12, 20, 12));
 
-        JLabel titulo = new JLabel("Administración de Productos");
+        JLabel titulo = new JLabel("<html>Administración de<br> Productos");
         titulo.setFont(FUENTE_TITULO);
         titulo.setForeground(new Color(0, 100, 0));
         top.add(titulo, BorderLayout.WEST);
@@ -62,7 +71,7 @@ public class PanelDetalleProducto extends JPanel {
         // Panel derecha: búsqueda + botón nuevo dentro de un contenedor "moderno"
         JPanel panelDerechaTop = new JPanel();
         panelDerechaTop.setOpaque(false);
-        panelDerechaTop.setLayout(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        panelDerechaTop.setLayout(new FlowLayout(FlowLayout.RIGHT, 12, 0));
 
         // Contenedor visual para la barra de búsqueda (parece un campo moderno)
         JPanel contBusqueda = new JPanel(new BorderLayout(6,0));
@@ -108,6 +117,25 @@ public class PanelDetalleProducto extends JPanel {
         btnNuevo.addActionListener(e -> abrirEditorNuevo());
 
         panelDerechaTop.add(contBusqueda);
+        
+        comboFiltroCat = new JComboBox<>();
+        comboFiltroCat.setFont(FUENTE_GLOBAL);
+        comboFiltroCat.setUI(new ModernComboBoxUI());
+
+        // cargar categorías existentes
+        cargarCategorias();
+
+        comboFiltroCat.addItem("Todas");  // opción por defecto
+
+        for (String nombre : categoriasMap.keySet()) {
+            comboFiltroCat.addItem(nombre);
+        }
+
+        comboFiltroCat.addActionListener(e -> filtrar());
+
+        // agregar al panel
+        panelDerechaTop.add(comboFiltroCat);
+        
         panelDerechaTop.add(btnNuevo);
 
         top.add(panelDerechaTop, BorderLayout.EAST);
@@ -131,12 +159,185 @@ public class PanelDetalleProducto extends JPanel {
         cargarProductosDesdeBD(true); // incluyendo inactivos
         refrescarCatalogo();
     }
+    
+    
+    // ESTILIECAR CATEGORIA
+    
+    private static class RoundedTextField extends JTextField {
+        private final int arc = 14; // redondeado suave
+
+        public RoundedTextField(String text, int columns) {
+            super(text, columns);
+            setOpaque(false);
+            setBorder(new EmptyBorder(4, 8, 4, 8));  // borde fino
+            setFont(FUENTE_GLOBAL);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            // Fondo blanco suave
+            g2.setColor(Color.WHITE);
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
+
+            super.paintComponent(g);
+            g2.dispose();
+        }
+
+        @Override
+        protected void paintBorder(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            g2.setColor(new Color(180, 180, 180));  // borde DELGADO
+            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
+
+            g2.dispose();
+        }
+    }
+
+    
+    private static class ModernComboBoxUI extends javax.swing.plaf.basic.BasicComboBoxUI {
+
+        @Override
+        protected JButton createArrowButton() {
+            JButton arrow = new JButton("▼");
+            arrow.setFont(new Font("Segoe UI Symbol", Font.BOLD, 14));
+            arrow.setBorder(null);
+            arrow.setForeground(new Color(90, 90, 90));
+            arrow.setBackground(Color.WHITE);
+            arrow.setOpaque(true);
+            arrow.setFocusPainted(false);
+            return arrow;
+        }
+
+        @Override
+        public void installUI(JComponent c) {
+            super.installUI(c);
+
+            JComboBox<?> combo = (JComboBox<?>) c;
+
+            combo.setBackground(Color.WHITE);
+            combo.setForeground(Color.BLACK);
+            combo.setFocusable(false);
+
+            combo.setBorder(BorderFactory.createCompoundBorder(
+                    new RoundedLineBorder(new Color(170,170,170), 1, 12),
+                    new EmptyBorder(1,4,1,4)
+            ));
+
+            combo.setRenderer(new ModernComboRenderer());
+        }
+
+        @Override
+        protected javax.swing.plaf.basic.ComboPopup createPopup() {
+            BasicComboPopup popup = new BasicComboPopup(comboBox) {
+                @Override
+                protected JScrollPane createScroller() {
+                    JScrollPane scroll = new JScrollPane(list);
+                    scroll.setBorder(null);
+                    scroll.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+                    return scroll;
+                }
+            };
+            popup.setBorder(new RoundedLineBorder(new Color(200,200,200), 1, 14));
+            return popup;
+        }
+    }
+
+    
+    private static class ModernComboRenderer extends JLabel implements ListCellRenderer<Object> {
+
+        ModernComboRenderer() {
+            setOpaque(true);
+            setFont(new Font("Segoe UI", Font.PLAIN, 15));
+            setBorder(new EmptyBorder(6,10,6,10));
+        }
+
+        @Override
+        public Component getListCellRendererComponent(
+                JList<?> list, Object value, int index,
+                boolean isSelected, boolean cellHasFocus) {
+
+            setText(value == null ? "" : value.toString());
+
+            if (isSelected) {
+                setBackground(new Color(0, 150, 136));   // turquesa del sistema
+                setForeground(Color.WHITE);
+            } else {
+                setBackground(Color.WHITE);
+                setForeground(Color.BLACK);
+            }
+
+            return this;
+        }
+    }
+
+    
+    /*private static class ModernScrollBarUI extends BasicScrollBarUI {
+
+        private final Color thumbColor = new Color(179,215,168);
+
+        @Override
+        protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(thumbColor);
+            g2.fillRoundRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height, 10, 10);
+            g2.dispose();
+        }
+
+        @Override
+        protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
+            g.setColor(new Color(235,235,235));
+            g.fillRect(trackBounds.x, trackBounds.y, trackBounds.width, trackBounds.height);
+        }
+
+        @Override
+        protected JButton createDecreaseButton(int orientation) {
+            return createZeroButton();
+        }
+
+        @Override
+        protected JButton createIncreaseButton(int orientation) {
+            return createZeroButton();
+        }
+
+        private JButton createZeroButton() {
+            JButton b = new JButton();
+            b.setPreferredSize(new Dimension(0,0));
+            b.setVisible(false);
+            return b;
+        }
+    }*/
+
+
+    
+    // ======================= CARGAR CATEGORIAS ====================
+    
+    private void cargarCategorias() {
+        categoriasMap.clear();
+        try (Connection conn = ConexionDB.obtenerConexion();
+             PreparedStatement ps = conn.prepareStatement("SELECT Id_Categoria, Nombre FROM Categoria ORDER BY Nombre ASC");
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                categoriasMap.put(rs.getString("Nombre"), rs.getInt("Id_Categoria"));
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error al cargar categorías: " + ex.getMessage());
+        }
+    }
 
     // ======================= CARGA DE DATOS =======================
     private void cargarProductosDesdeBD(boolean includeInactivos) {
         productosMap.clear();
-        String sql = "SELECT Id_Producto, Nombre, Nombre_Generico, Farmaceutica, Gramaje, " +
-                "Precio_Venta, Stock, Foto_Producto, Activo FROM Producto" +
+        String sql = "SELECT Id_Producto, Nombre, Nombre_Generico, Farmaceutica, Gramaje, Fecha_Caducidad, " +
+                "Precio_Compra, Precio_Venta, Stock, Foto_Producto, Activo, StockMin, Id_Categoria FROM Producto" +
                 (includeInactivos ? "" : " WHERE Activo='S'");
         try (Connection conn = ConexionDB.obtenerConexion();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -148,12 +349,16 @@ public class PanelDetalleProducto extends JPanel {
                 String nombreGen = rs.getString("Nombre_Generico");
                 String farm = rs.getString("Farmaceutica");
                 String gram = rs.getString("Gramaje");
+                String cad = rs.getString("Fecha_Caducidad");
+                double precioC = rs.getDouble("Precio_Compra");
                 double precio = rs.getDouble("Precio_Venta");
                 int stock = rs.getInt("Stock");
                 byte[] foto = rs.getBytes("Foto_Producto");
                 boolean activo = "S".equalsIgnoreCase(rs.getString("Activo"));
+                int stockmin = rs.getInt("StockMin");
+                int idCat = rs.getInt("Id_Categoria");
 
-                Producto p = new Producto(id,nombre,nombreGen,farm,gram,precio,stock,foto,activo);
+                Producto p = new Producto(id,nombre,nombreGen,farm,gram,cad,precioC,precio,stock,foto,activo, stockmin, idCat);
                 productosMap.put(id,p);
             }
         } catch (Exception ex) {
@@ -172,22 +377,40 @@ public class PanelDetalleProducto extends JPanel {
     }
 
     private void filtrar() {
-        String q = txtBuscar.getText().trim().toLowerCase();
+    	String q = txtBuscar.getText().trim().toLowerCase();
+        String categoriaSel = comboFiltroCat.getSelectedItem().toString();
+
         panelCatalogo.removeAll();
+
         for (Producto p : productosMap.values()) {
-            if (q.isEmpty()
+
+            boolean coincideTexto =
+                    q.isEmpty()
                     || p.nombre.toLowerCase().contains(q)
-                    || (p.nombreGenerico != null && p.nombreGenerico.toLowerCase().contains(q))) {
+                    || (p.nombreGenerico != null && p.nombreGenerico.toLowerCase().contains(q));
+
+            boolean coincideCategoria =
+                    categoriaSel.equals("Todas")
+                    || categoriasMap.get(categoriaSel) == p.idCategoria;
+
+            if (coincideTexto && coincideCategoria) {
                 panelCatalogo.add(new ProductoCardEditable(p));
             }
         }
+
         panelCatalogo.revalidate();
         panelCatalogo.repaint();
+        
+     // ***** FIX DEL BUG DE DESAPARICIÓN *****
+        SwingUtilities.invokeLater(() -> {
+            scrollCatalogo.getViewport().revalidate();
+            scrollCatalogo.getViewport().repaint();
+        });
     }
 
     // ======================= EDITOR / NUEVO PRODUCTO =======================
     private void abrirEditorNuevo() {
-        Producto nuevo = new Producto(0,"","", "", "", 0.0, 0, null, true);
+        Producto nuevo = new Producto(0,"","", "", "","", 0.0, 0.0, 0, null, true, 0, 0);
         abrirEditor(nuevo, true);
     }
 
@@ -199,8 +422,8 @@ public class PanelDetalleProducto extends JPanel {
                 isNew ? "Nuevo Producto" : "Editar Producto",
                 Dialog.ModalityType.APPLICATION_MODAL
         );
-        dlg.setSize(900, 600);
-        dlg.setLocationRelativeTo(this);
+        dlg.setSize(950, 770);
+        dlg.setLocationRelativeTo(null);
 
         JPanel content = new JPanel();
         content.setLayout(new BorderLayout(10,10));
@@ -208,10 +431,10 @@ public class PanelDetalleProducto extends JPanel {
         content.setBackground(COLOR_FONDO);
 
         // Título grande tipo PanelContratarEmpleado
-        JLabel lblTitulo = new JLabel(isNew ? "Nuevo producto" : "Editar producto", SwingConstants.CENTER);
-        lblTitulo.setFont(FUENTE_GLOBAL.deriveFont(Font.BOLD, 22f));
+        /*JLabel lblTitulo = new JLabel(isNew ? "Nuevo producto" : "Editar producto", SwingConstants.CENTER);
+        lblTitulo.setFont(FUENTE_GLOBAL.deriveFont(Font.BOLD, 20f));
         lblTitulo.setForeground(new Color(0, 100, 0));
-        content.add(lblTitulo, BorderLayout.NORTH);
+        content.add(lblTitulo, BorderLayout.NORTH);*/
 
         // Formulario principal en panel redondeado
         JPanel panelFormWrap = new RoundedPanel(18, new Color(255,255,255,240));
@@ -227,6 +450,8 @@ public class PanelDetalleProducto extends JPanel {
         gbc.weightx = 1.0;
 
         int row = 0;
+        
+        cargarCategorias();
 
         // Helpers de label y campo
         JLabel lblNombre = crearLabel("Nombre:");
@@ -244,10 +469,84 @@ public class PanelDetalleProducto extends JPanel {
         JLabel lblGram = crearLabel("Gramaje:");
         JTextField txtGram = crearTextField(p.gramaje == null ? "" : p.gramaje);
         agregarCampo(form, gbc, row++, lblGram, txtGram);
+        
+        // ** CATEGORIAS **
+        
+        JLabel lblCategoria = crearLabel("Categoría:");
+
+        String[] nombresCat = new String[categoriasMap.size() + 1];
+        int i = 0;
+        for (String nombre : categoriasMap.keySet()) nombresCat[i++] = nombre;
+        nombresCat[i] = "➕ Crear nueva categoría";
+
+        JComboBox<String> comboCategoria = new JComboBox<>(nombresCat);
+        comboCategoria.setFont(FUENTE_GLOBAL);
+        comboCategoria.setUI(new ModernComboBoxUI());
+        comboCategoria.setPreferredSize(new Dimension(260, 28));
+
+        // Si está editando producto, seleccionar categoría actual
+        if (!isNew && p.idCategoria != 0) {
+            for (String nombre : categoriasMap.keySet()) {
+                if (categoriasMap.get(nombre) == p.idCategoria) {
+                    comboCategoria.setSelectedItem(nombre);
+                    break;
+                }
+            }
+        }
+
+        agregarCampo(form, gbc, row++, lblCategoria, comboCategoria);
+
+        // Evento para crear categorías nuevas
+        comboCategoria.addActionListener(e -> {
+            if (comboCategoria.getSelectedItem().equals("➕ Crear nueva categoría")) {
+
+                String nueva = JOptionPane.showInputDialog(dlg, "Nombre de la nueva categoría:");
+                if (nueva == null || nueva.trim().isEmpty()) {
+                    comboCategoria.setSelectedIndex(0);
+                    return;
+                }
+
+                nueva = nueva.trim();
+
+                try (Connection conn = ConexionDB.obtenerConexion();
+                     PreparedStatement ps = conn.prepareStatement("INSERT INTO Categoria (Nombre) VALUES (?)")) {
+                    ps.setString(1, nueva);
+                    ps.executeUpdate();
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(dlg, "No se pudo crear la categoría: " + ex.getMessage());
+                    return;
+                }
+
+                cargarCategorias();
+
+                // reconstruir combo
+                String[] nuevas = new String[categoriasMap.size() + 1];
+                int k=0;
+                for (String nombre : categoriasMap.keySet()) nuevas[k++] = nombre;
+                nuevas[k] = "➕ Crear nueva categoría";
+
+                comboCategoria.setModel(new DefaultComboBoxModel<>(nuevas));
+                comboCategoria.setSelectedItem(nueva);
+            }
+        });
+        
+        // ** FIN CATEGORIA **
+        
+        JLabel lblCad = crearLabel("Fecha de caducidad:");
+        JTextField txtCad = crearTextField(p.gramaje == null ? "" : p.caducidad);
+        agregarCampo(form, gbc, row++, lblCad, txtCad);
+        
+        JLabel lblPrecioC = crearLabel("Precio Compra:");
+        JTextField txtPrecioC = crearTextField(String.valueOf(p.precioCompra));
+        agregarCampo(form, gbc, row++, lblPrecioC, txtPrecioC);
 
         JLabel lblPrecio = crearLabel("Precio:");
         JTextField txtPrecio = crearTextField(String.valueOf(p.precioVenta));
         agregarCampo(form, gbc, row++, lblPrecio, txtPrecio);
+        
+        JLabel lblStockMin = crearLabel("Stock Minimo:");
+        JTextField txtStockMin = crearTextField(String.valueOf(p.stockmin));
+        agregarCampo(form, gbc, row++, lblStockMin, txtStockMin);
 
         JLabel lblStock = crearLabel("Stock:");
         JTextField txtStock = crearTextField(String.valueOf(p.stock));
@@ -337,45 +636,101 @@ public class PanelDetalleProducto extends JPanel {
         btnGuardar.addActionListener(ev -> {
             try {
                 String nombreN = txtNombre.getText().trim();
+                double precioCN = Double.parseDouble(txtPrecioC.getText().trim());
                 double precioN = Double.parseDouble(txtPrecio.getText().trim());
                 int stockN = Integer.parseInt(txtStock.getText().trim());
+                int stockminN = Integer.parseInt(txtStockMin.getText().trim()); 
                 String genN = txtGen.getText().trim();
                 String farmN = txtFarm.getText().trim();
                 String gramN = txtGram.getText().trim();
+                String cadN = txtCad.getText().trim();
                 boolean activoN = chkActivo.isSelected();
 
                 if (nombreN.isEmpty()) {
                     JOptionPane.showMessageDialog(dlg, "El nombre es requerido");
                     return;
                 }
+                
+             // === VALIDAR FECHA DE CADUCIDAD ===
+                try {
+                    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+                    LocalDate fechaCad = LocalDate.parse(cadN, fmt);
+                    LocalDate hoy = LocalDate.now();
+
+                    if (fechaCad.isBefore(hoy)) {
+                        JOptionPane.showMessageDialog(dlg,
+                                "La fecha de caducidad no puede ser pasada.\nIngrese una fecha válida.",
+                                "Fecha inválida",
+                                JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
+
+                } catch (DateTimeParseException ex) {
+                    JOptionPane.showMessageDialog(dlg,
+                            "Formato de fecha inválido.\nUse formato: yyyy-MM-dd",
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                
+             // === VALIDAR PRECIO DE COMPRA < PRECIO DE VENTA ===
+                if (precioN < precioCN) {
+                    JOptionPane.showMessageDialog(dlg,
+                            "El precio de venta no puede ser menor al precio de compra.",
+                            "Precio inválido",
+                            JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                
+             // === VALIDAR STOCK NO PUEDA SER MENOR AL STOCK MÍNIMO ===
+                if (stockN < stockminN) {
+                    JOptionPane.showMessageDialog(dlg,
+                            "El stock no puede ser menor al stock mínimo.",
+                            "Stock inválido",
+                            JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                
+                String catNombre = comboCategoria.getSelectedItem().toString();
+                int idCategoria = categoriasMap.getOrDefault(catNombre, 0);
+
 
                 if (isNew) {
                     try (Connection conn = ConexionDB.obtenerConexion();
                          PreparedStatement ps = conn.prepareStatement(
-                                 "INSERT INTO Producto (Nombre, Nombre_Generico, Farmaceutica, Gramaje, Precio_Venta, Stock, Foto_Producto, Activo) " +
-                                         "VALUES (?,?,?,?,?,?,?,?)")) {
+                                 "INSERT INTO Producto (Nombre, Nombre_Generico, Farmaceutica, Gramaje, Fecha_Caducidad, Precio_Compra, Precio_Venta, Stock, Foto_Producto, Activo, StockMin, Id_Categoria) " +
+                                         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")) {
                         ps.setString(1, nombreN);
                         ps.setString(2, genN);
                         ps.setString(3, farmN);
                         ps.setString(4, gramN);
-                        ps.setDouble(5, precioN);
-                        ps.setInt(6, stockN);
-                        if (imgBytes[0] != null) ps.setBytes(7, imgBytes[0]); else ps.setNull(7, java.sql.Types.BLOB);
-                        ps.setString(8, activoN ? "S" : "N");
+                        ps.setString(5, cadN);
+                        ps.setDouble(6, precioCN);
+                        ps.setDouble(7, precioN);
+                        ps.setInt(8, stockN);
+                        if (imgBytes[0] != null) ps.setBytes(9, imgBytes[0]); else ps.setNull(9, java.sql.Types.BLOB);
+                        ps.setString(10, activoN ? "S" : "N");
+                        ps.setInt(11, stockminN);
+                        ps.setInt(12, idCategoria);
                         ps.executeUpdate();
                     }
                 } else {
                     try (Connection conn = ConexionDB.obtenerConexion();
                          PreparedStatement ps = conn.prepareStatement(
-                                 "UPDATE Producto SET Nombre=?, Nombre_Generico=?, Farmaceutica=?, Gramaje=?, Precio_Venta=?, Stock=?, Activo=? WHERE Id_Producto=?")) {
+                                 "UPDATE Producto SET Nombre=?, Nombre_Generico=?, Farmaceutica=?, Gramaje=?, Fecha_Caducidad=?, Precio_Compra=?, Precio_Venta=?, Stock=?, Activo=?, StockMin=?, Id_Categoria=? WHERE Id_Producto=?")) {
                         ps.setString(1, nombreN);
                         ps.setString(2, genN);
                         ps.setString(3, farmN);
                         ps.setString(4, gramN);
-                        ps.setDouble(5, precioN);
-                        ps.setInt(6, stockN);
-                        ps.setString(7, activoN ? "S" : "N");
-                        ps.setInt(8, p.id);
+                        ps.setString(5, cadN);
+                        ps.setDouble(6, precioCN);
+                        ps.setDouble(7, precioN);
+                        ps.setInt(8, stockN);
+                        ps.setString(9, activoN ? "S" : "N");
+                        ps.setInt(10, stockminN);
+                        ps.setInt(11, idCategoria);
+                        ps.setInt(12, p.id);
                         ps.executeUpdate();
                     }
                     if (imgBytes[0] != null) {
@@ -406,6 +761,9 @@ public class PanelDetalleProducto extends JPanel {
 
         dlg.getContentPane().add(content);
         dlg.setVisible(true);
+        
+        cargarProductosDesdeBD(true); // incluyendo inactivos
+        refrescarCatalogo();
     }
 
     // ======================= TARJETA EDITABLE =======================
@@ -517,13 +875,17 @@ public class PanelDetalleProducto extends JPanel {
         String nombreGenerico;
         String farmaceutica;
         String gramaje;
+        String caducidad;
+        double precioCompra;
         double precioVenta;
         int stock;
         byte[] foto;
         boolean activo;
-        Producto(int id,String n,String ng,String f,String g,double p,int s,byte[] ft,boolean a){
+        int stockmin;
+        int idCategoria;
+        Producto(int id,String n,String ng,String f,String g,String cad,double pc,double p,int s,byte[] ft,boolean a, int smin, int idCategoria){
             this.id=id; this.nombre=n; this.nombreGenerico=ng; this.farmaceutica=f;
-            this.gramaje=g; this.precioVenta=p; this.stock=s; this.foto=ft; this.activo=a;
+            this.gramaje=g;this.caducidad=cad; this.precioCompra = pc; this.precioVenta=p; this.stock=s; this.foto=ft; this.activo=a; this.stockmin = smin; this.idCategoria = idCategoria;
         }
     }
 
@@ -656,11 +1018,11 @@ public class PanelDetalleProducto extends JPanel {
     }
 
     private static JTextField crearTextField(String inicial) {
-        JTextField tf = new JTextField(inicial, 25);
-        tf.setFont(FUENTE_GLOBAL);
-        tf.setPreferredSize(new Dimension(260, 28));
+        RoundedTextField tf = new RoundedTextField(inicial, 25);
+        tf.setPreferredSize(new Dimension(260, 30));
         return tf;
     }
+
 
     private static void agregarCampo(JPanel form, GridBagConstraints gbc, int row, JComponent label, JComponent field) {
         gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0;
