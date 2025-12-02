@@ -196,6 +196,8 @@ public class GerenteUIModerno extends JFrame {
                         panelDerecho.add(vPanel, BorderLayout.CENTER);
                         break;
                     case "Reportes":
+                    	PanelReportes rPanel = new PanelReportes();
+                    	panelDerecho.add(rPanel, BorderLayout.CENTER);
                         break;
                     case "Anuncios":
                     	PanelAnuncios aPanel = new PanelAnuncios();

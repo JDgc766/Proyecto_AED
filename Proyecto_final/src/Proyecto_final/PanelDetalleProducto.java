@@ -476,7 +476,7 @@ public class PanelDetalleProducto extends JPanel {
         JTextField txtFarm = crearTextField(p.farmaceutica == null ? "" : p.farmaceutica);
         agregarCampo(form, gbc, row++, lblFarm, txtFarm);
 
-        JLabel lblGram = crearLabel("Gramaje:");
+        JLabel lblGram = crearLabel("Unidad de medida:");
         JTextField txtGram = crearTextField(p.gramaje == null ? "" : p.gramaje);
         agregarCampo(form, gbc, row++, lblGram, txtGram);
         
@@ -487,7 +487,7 @@ public class PanelDetalleProducto extends JPanel {
         String[] nombresCat = new String[categoriasMap.size() + 1];
         int i = 0;
         for (String nombre : categoriasMap.keySet()) nombresCat[i++] = nombre;
-        nombresCat[i] = "➕ Crear nueva categoría";
+        nombresCat[i] = "+ Crear nueva categoría";
 
         JComboBox<String> comboCategoria = new JComboBox<>(nombresCat);
         comboCategoria.setFont(FUENTE_GLOBAL);

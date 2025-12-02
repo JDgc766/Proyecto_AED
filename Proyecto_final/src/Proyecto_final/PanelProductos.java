@@ -29,6 +29,8 @@ import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -37,19 +39,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * PanelVentaProductos
- * -------------------
- * Un JPanel modular y moderno para la venta en mostrador.
- * - Vista de productos en tarjetas con imagen (scrollable)
- * - Carrito/Factura en tabla sin columna ID
- * - Botones sin borde y con símbolos (unicode)
- * - Scrollbar personalizada (redondeada, verde pastel)
- * - Única fuente de verdad para productos (lista) y carrito (map id->cantidad)
- *
- * Requiere: ConexionDB.obtenerConexion() para SQLite
- */
 public class PanelProductos extends JPanel {
+	
+	private static final String NOMBRE_FARMACIA = "Farmacia Jalinas 2";
+	private static final String DIRECCION_FARMACIA = "Sector del Mayoreo, Managua, Nicaragua";
+	private static final String TELEFONO_FARMACIA = "Tel: 8888-8888";
+	private static final String RUC_FARMACIA = "RUC: 001-160998-0000X";
+	private static final String LOGO_PATH = "/imagenes/f.jpg";
+
 
     // === MODELO DE DATOS ===
     private final Map<Integer, Producto> productosMap = new LinkedHashMap<>();
@@ -78,6 +75,10 @@ public class PanelProductos extends JPanel {
     private String rolUsuario;
     private int idEmpleado;
     private String nombreEmpleado;
+    
+    private static boolean bloqueoFiltro = false;
+    
+
 
     public PanelProductos(String rol, int idempleado, String nombre) {
     	this.rolUsuario = rol;
@@ -166,7 +167,8 @@ public class PanelProductos extends JPanel {
 
         // Carga inicial
         cargarProductosDesdeBD();
-        refrescarCatalogo();
+        filtrarCatalogo();
+        refrescarCatalogo();        
 
         // listeners para hover en tabla
         tablaFactura.addMouseMotionListener(new MouseMotionAdapter() {
@@ -182,7 +184,7 @@ public class PanelProductos extends JPanel {
         });
     }
     
-    private boolean coincideCategoriaProducto(Producto p, String categoriaSel) {
+    /*private boolean coincideCategoriaProducto(Producto p, String categoriaSel) {
         try (Connection conn = ConexionDB.obtenerConexion();
              PreparedStatement ps = conn.prepareStatement(
                  "SELECT Id_Categoria FROM Producto WHERE Id_Producto = ?")
@@ -196,47 +198,55 @@ public class PanelProductos extends JPanel {
         } catch (Exception ignored) { }
 
         return false;
-    }
+    }*/
 
     
     private void filtrarCatalogo() {
         String q = txtBuscar.getText().trim().toLowerCase();
-        Object selObj = comboFiltroCat.getSelectedItem();
-        String categoriaSel = (selObj == null ? "Todas" : selObj.toString());
+        String categoriaSel = comboFiltroCat.getSelectedItem().toString();
 
         panelCatalogo.removeAll();
 
+        /*Integer idCatSeleccionada =
+                categoriaSel.equals("Todas") ? null : categoriasMap.get(categoriaSel);*/
+
         for (Producto p : productosMap.values()) {
 
-            boolean coincideTexto =
-                    q.isEmpty()
-                    || p.nombre.toLowerCase().contains(q)
-                    || (p.nombreGenerico != null && p.nombreGenerico.toLowerCase().contains(q));
+        	 boolean coincideTexto =
+                     q.isEmpty()
+                     || p.nombre.toLowerCase().contains(q)
+                     || (p.nombreGenerico != null && p.nombreGenerico.toLowerCase().contains(q));
 
-            boolean coincideCategoria =
-                    categoriaSel.equals("Todas")  // sin filtro
-                    || coincideCategoriaProducto(p, categoriaSel);
+             boolean coincideCategoria =
+                     categoriaSel.equals("Todas")
+                     || categoriasMap.get(categoriaSel) == p.idCategoria;
 
-            if (coincideTexto && coincideCategoria) {
+            if (coincideCategoria && coincideTexto) {
                 panelCatalogo.add(new ProductoCard(p));
             }
         }
 
         panelCatalogo.revalidate();
         panelCatalogo.repaint();
-        
+
         SwingUtilities.invokeLater(() -> {
             scrollCatalogo.getViewport().revalidate();
             scrollCatalogo.getViewport().repaint();
         });
-        
     }
 
 
+
+    private void ejecutarFiltrado() {
+        if (bloqueoFiltro) return;   // 🔥 evita refrescos cuando NO toca
+        filtrarCatalogo();
+    }
+    
     // ---------------------- CREACIÓN DE UI ----------------------
     private JPanel crearPanelBusqueda() {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         p.setOpaque(false);
+        cargarCategorias(); 
 
         // ===== CONTENEDOR MODERNO =====
         JPanel contBusqueda = new JPanel(new BorderLayout(6, 0));
@@ -256,14 +266,14 @@ public class PanelProductos extends JPanel {
         txtBuscar.setOpaque(false);
         txtBuscar.setBorder(null);
         txtBuscar.setPreferredSize(new Dimension(260, 28));
-        colocarPlaceholder(txtBuscar, "Buscar producto...");
+        //colocarPlaceholder(txtBuscar, "Buscar producto...");
         contBusqueda.add(txtBuscar, BorderLayout.CENTER);
 
         // EVENTO DE FILTRADO
         txtBuscar.getDocument().addDocumentListener(new DocumentListener() {
-            public void insertUpdate(DocumentEvent e) { filtrarCatalogo(); }
-            public void removeUpdate(DocumentEvent e) { filtrarCatalogo(); }
-            public void changedUpdate(DocumentEvent e) { filtrarCatalogo(); }
+        	public void insertUpdate(DocumentEvent e) { ejecutarFiltrado(); }
+            public void removeUpdate(DocumentEvent e) { ejecutarFiltrado(); }
+            public void changedUpdate(DocumentEvent e) { ejecutarFiltrado(); }
         });       
         p.add(contBusqueda);
 
@@ -283,15 +293,15 @@ public class PanelProductos extends JPanel {
         //comboFiltroCat.setRenderer(new ModernComboRenderer());
 
         // cargar categorías
-        cargarCategorias();        
+               
 
         comboFiltroCat.addItem("Todas");
         for (String cat : categoriasMap.keySet())
             comboFiltroCat.addItem(cat);
         
-        comboFiltroCat.setSelectedIndex(0);
+        //comboFiltroCat.setSelectedIndex(0);
 
-        comboFiltroCat.addActionListener(e -> filtrarCatalogo());
+        comboFiltroCat.addActionListener(e -> ejecutarFiltrado());
              
         p.add(comboFiltroCat);
         
@@ -309,12 +319,17 @@ public class PanelProductos extends JPanel {
 
         if(rolUsuario.equals("GERENTE")){
         	p.add(makeIconButton("🔧", "Editar", e -> abrirPanelDetalle()));
+        	
+        	
         }
-       // p.add(makeIconButton("📃", "Ver Factura", e -> mostrarVentanaFactura()));
+        
         p.add(makeIconButton("🔄", "Refrescar", e -> {        	
-            cargarProductosDesdeBD();
-            refrescarCatalogo();
+        	cargarProductosDesdeBD();
+            filtrarCatalogo();
+            refrescarCatalogo();                
         }));
+       // p.add(makeIconButton("📃", "Ver Factura", e -> mostrarVentanaFactura()));
+        
         return p;
     }
 
@@ -433,6 +448,9 @@ public class PanelProductos extends JPanel {
     // ---------------------- INTERACCIÓN CATALOGO ----------------------
     private void aplicarFiltro(String q) {
         panelCatalogo.removeAll();
+        
+        comboFiltroCat.setSelectedItem("Todas");
+        
         for (Producto p : productosMap.values()) {
             if (q.isEmpty() || p.nombre.toLowerCase().contains(q) || (p.nombreGenerico != null && p.nombreGenerico.toLowerCase().contains(q))) {
                 panelCatalogo.add(new ProductoCard(p));
@@ -441,19 +459,12 @@ public class PanelProductos extends JPanel {
         panelCatalogo.revalidate();
         panelCatalogo.repaint();
         
-        SwingUtilities.invokeLater(() -> {
-            scrollCatalogo.getViewport().revalidate();
-            scrollCatalogo.getViewport().repaint();
-        });
         
-        SwingUtilities.invokeLater(() -> {
-            scrollCatalogo.getViewport().revalidate();
-            scrollCatalogo.getViewport().repaint();
-        });
     }
 
     private void refrescarCatalogo() {
-        aplicarFiltro("");       
+    	filtrarCatalogo(); 
+    	aplicarFiltro("");
         
     }
 
@@ -493,19 +504,31 @@ public class PanelProductos extends JPanel {
 
     private void sincronizarTablaFactura() {
         modeloFactura.setRowCount(0);
-        double subtotal = 0;
-        for (Map.Entry<Integer,Integer> e : carritoMap.entrySet()) {
+
+        BigDecimal subtotal = BigDecimal.ZERO;
+
+        for (Map.Entry<Integer, Integer> e : carritoMap.entrySet()) {
             Producto p = productosMap.get(e.getKey());
             int qty = e.getValue();
-            double total = p.precioVenta * qty;
-            modeloFactura.addRow(new Object[]{p.nombre, p.precioVenta, qty, total});
-            subtotal += total;
+
+            BigDecimal precio = BigDecimal.valueOf(p.precioVenta);
+            BigDecimal total = precio.multiply(BigDecimal.valueOf(qty));
+
+            modeloFactura.addRow(new Object[]{
+                    p.nombre,
+                    String.format("%.2f", p.precioVenta),
+                    qty,
+                    String.format("%.2f", total.doubleValue())
+            });
+
+            subtotal = subtotal.add(total);
         }
-        lblTotal.setText(String.format("Total: $%.2f", subtotal));
+
+        lblTotal.setText("Total: $" + String.format("%.2f", subtotal.doubleValue()));
     }
 
-    private void mostrarVentanaFactura() {
 
+    private void mostrarVentanaFactura() {
         try {
             // === Crear carpeta en Escritorio ===
             String userHome = System.getProperty("user.home");
@@ -522,57 +545,87 @@ public class PanelProductos extends JPanel {
 
             doc.open();
 
-            // ======= Estilos ========
-            com.itextpdf.text.Font tituloFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.HELVETICA, 20, com.itextpdf.text.Font.BOLD);
-            com.itextpdf.text.Font normalFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.HELVETICA, 12);
-            com.itextpdf.text.Font boldFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.HELVETICA, 12, com.itextpdf.text.Font.BOLD);
+            // ======= FUENTES ========
+            com.itextpdf.text.Font tituloFont = new com.itextpdf.text.Font(
+                    com.itextpdf.text.Font.FontFamily.HELVETICA, 18, com.itextpdf.text.Font.BOLD);
+            com.itextpdf.text.Font normalFont = new com.itextpdf.text.Font(
+                    com.itextpdf.text.Font.FontFamily.HELVETICA, 12);
+            com.itextpdf.text.Font boldFont = new com.itextpdf.text.Font(
+                    com.itextpdf.text.Font.FontFamily.HELVETICA, 12, com.itextpdf.text.Font.BOLD);
 
-            // ======= ENCABEZADO ========
-            doc.add(new com.itextpdf.text.Paragraph("FARMACIA JALINAS 2 DEL SECTOR DEL MAYOREO", tituloFont));
-            doc.add(new com.itextpdf.text.Paragraph("Factura de Venta", boldFont));
-            doc.add(new com.itextpdf.text.Paragraph(" ")); // espacio
+            // ======= LOGO ========
+            try {
+                java.net.URL logoUrl = getClass().getResource(LOGO_PATH);
+                if (logoUrl != null) {
+                    com.itextpdf.text.Image logo = com.itextpdf.text.Image.getInstance(logoUrl);
+                    logo.scaleToFit(120, 120);       // tamaño del logo
+                    logo.setAlignment(com.itextpdf.text.Image.ALIGN_LEFT);
+                    doc.add(logo);
+                }
+            } catch (Exception exLogo) {
+                System.out.println("No se pudo cargar el logo: " + exLogo.getMessage());
+            }
+
+            // ======= DATOS DE LA FARMACIA ========
+            doc.add(new com.itextpdf.text.Paragraph(NOMBRE_FARMACIA, tituloFont));
+            doc.add(new com.itextpdf.text.Paragraph(DIRECCION_FARMACIA, normalFont));
+            doc.add(new com.itextpdf.text.Paragraph(TELEFONO_FARMACIA, normalFont));
+            doc.add(new com.itextpdf.text.Paragraph(RUC_FARMACIA, normalFont));
+            doc.add(new com.itextpdf.text.Paragraph(" "));
 
             // ======= DATOS EMPLEADO / FECHA ========
             String fecha = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new java.util.Date());
-
-            doc.add(new com.itextpdf.text.Paragraph("Empleado: " + nombreEmpleado, normalFont));
+            doc.add(new com.itextpdf.text.Paragraph("Atendido por: " + nombreEmpleado, normalFont));
             doc.add(new com.itextpdf.text.Paragraph("ID empleado: " + idEmpleado, normalFont));
             doc.add(new com.itextpdf.text.Paragraph("Fecha: " + fecha, normalFont));
+            doc.add(new com.itextpdf.text.Paragraph(" "));
+            doc.add(new com.itextpdf.text.Paragraph("--------------- DETALLE DE COMPRA ---------------", boldFont));
             doc.add(new com.itextpdf.text.Paragraph(" "));
 
             // ======= TABLA DE PRODUCTOS ========
             com.itextpdf.text.pdf.PdfPTable table = new com.itextpdf.text.pdf.PdfPTable(4);
             table.setWidthPercentage(100);
+            table.setWidths(new float[]{40, 10, 25, 25}); // ancho de columnas
 
             table.addCell(new com.itextpdf.text.Phrase("Producto", boldFont));
             table.addCell(new com.itextpdf.text.Phrase("Cant.", boldFont));
             table.addCell(new com.itextpdf.text.Phrase("Precio Unit.", boldFont));
             table.addCell(new com.itextpdf.text.Phrase("Total", boldFont));
 
-            double totalGeneral = 0;
+            BigDecimal totalGeneral = BigDecimal.ZERO;
 
             for (Map.Entry<Integer, Integer> e : carritoMap.entrySet()) {
                 Producto p = productosMap.get(e.getKey());
                 int qty = e.getValue();
-                double total = qty * p.precioVenta;
+
+                BigDecimal precioUnit = BigDecimal.valueOf(p.precioVenta)
+                        .setScale(2, RoundingMode.HALF_UP);
+
+                BigDecimal totalLinea = precioUnit.multiply(BigDecimal.valueOf(qty))
+                        .setScale(2, RoundingMode.HALF_UP);
 
                 table.addCell(new com.itextpdf.text.Phrase(p.nombre, normalFont));
                 table.addCell(new com.itextpdf.text.Phrase(String.valueOf(qty), normalFont));
-                table.addCell(new com.itextpdf.text.Phrase(String.format("$%.2f", p.precioVenta), normalFont));
-                table.addCell(new com.itextpdf.text.Phrase(String.format("$%.2f", total), normalFont));
+                table.addCell(new com.itextpdf.text.Phrase("$" + precioUnit, normalFont));
+                table.addCell(new com.itextpdf.text.Phrase("$" + totalLinea, normalFont));
 
-                totalGeneral += total;
+                totalGeneral = totalGeneral.add(totalLinea);
             }
 
             doc.add(table);
 
-            // ======= TOTAL GENERAL ========
+            // ======= TOTAL ========
             doc.add(new com.itextpdf.text.Paragraph(" "));
-            doc.add(new com.itextpdf.text.Paragraph("TOTAL A PAGAR: $" + String.format("%.2f", totalGeneral), tituloFont));
+            doc.add(new com.itextpdf.text.Paragraph(
+                    "TOTAL A PAGAR: $" + totalGeneral.setScale(2, RoundingMode.HALF_UP),
+                    tituloFont));
+
+            doc.add(new com.itextpdf.text.Paragraph(" "));
+            doc.add(new com.itextpdf.text.Paragraph("Gracias por su compra. ¡Vuelva pronto!", boldFont));
 
             doc.close();
 
-            // ======= ABRIR PDF AUTOMÁTICAMENTE ========
+            // ======= ABRIR PDF ========
             Desktop.getDesktop().open(pdfFile);
 
             JOptionPane.showMessageDialog(this,
@@ -586,6 +639,7 @@ public class PanelProductos extends JPanel {
     }
 
 
+
     private void ejecutarVenta() {
         if (carritoMap.isEmpty()) { JOptionPane.showMessageDialog(this, "El carrito está vacío"); return; }
 
@@ -596,7 +650,7 @@ public class PanelProductos extends JPanel {
             PreparedStatement psVenta = conn.prepareStatement(
                     "INSERT INTO Venta (Fecha, Id_Empleado) VALUES (DATE('now'), ?)",
                     java.sql.Statement.RETURN_GENERATED_KEYS);
-            psVenta.setInt(1, 1);
+            psVenta.setInt(1, idEmpleado);
             psVenta.executeUpdate();
             ResultSet rsKeys = psVenta.getGeneratedKeys();
             int idVenta = rsKeys.next() ? rsKeys.getInt(1) : 0;
@@ -972,21 +1026,32 @@ public class PanelProductos extends JPanel {
     private static void colocarPlaceholder(JTextField field, String placeholder) {
         field.setText(placeholder);
         field.setForeground(new Color(150,150,150));
+
         field.addFocusListener(new FocusAdapter() {
             @Override public void focusGained(FocusEvent e) {
+                bloqueoFiltro = true;  // ⛔ EVITA FILTRADO TEMPORALMENTE
+
                 if (field.getText().equals(placeholder)) {
                     field.setText("");
                     field.setForeground(Color.BLACK);
                 }
+
+                // 🔓 volver permitir filtrado
+                SwingUtilities.invokeLater(() -> bloqueoFiltro = false);
             }
+
             @Override public void focusLost(FocusEvent e) {
                 if (field.getText().trim().isEmpty()) {
+                    bloqueoFiltro = true; // evita refresco raro al restaurar placeholder
                     field.setText(placeholder);
                     field.setForeground(new Color(150,150,150));
+
+                    SwingUtilities.invokeLater(() -> bloqueoFiltro = false);
                 }
             }
         });
     }
+
     
     private void cargarCategorias() {
         categoriasMap.clear();

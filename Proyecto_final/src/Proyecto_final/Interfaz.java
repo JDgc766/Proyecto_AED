@@ -158,8 +158,8 @@ public class Interfaz extends JFrame {
                             @Override
                             public void windowClosed(java.awt.event.WindowEvent e) {
                                 SwingUtilities.invokeLater(() -> {
-                                    GerenteUIModerno gerente = new GerenteUIModerno(rol, nombreEmpleado, fotoEmpleado, idEmpleado);
-                                    gerente.setVisible(true);
+                                    GerenteUIModerno empleado = new GerenteUIModerno(rol, nombreEmpleado, fotoEmpleado, idEmpleado);
+                                    empleado.setVisible(true);
                                     Interfaz.this.dispose();
                                 });
                             }
