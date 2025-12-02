@@ -21,6 +21,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -45,6 +46,7 @@ public class PanelDetalleProducto extends JPanel {
     private final JScrollPane scrollCatalogo;
     private final JTextField txtBuscar = new JTextField(30);
     private JComboBox<String> comboFiltroCat;
+    private static String mensaje;
 
 
     private final Color COLOR_FONDO = new Color(225, 245, 254);
@@ -368,7 +370,14 @@ public class PanelDetalleProducto extends JPanel {
     }
 
     private void refrescarCatalogo() {
-        panelCatalogo.removeAll();
+    	panelCatalogo.removeAll();
+
+        String q = ""; // filtro en blanco
+        String categoria = "Todas"; 
+
+        if (comboFiltroCat != null)
+            comboFiltroCat.setSelectedItem("Todas");
+
         for (Producto p : productosMap.values()) {
             panelCatalogo.add(new ProductoCardEditable(p));
         }
@@ -422,7 +431,8 @@ public class PanelDetalleProducto extends JPanel {
                 isNew ? "Nuevo Producto" : "Editar Producto",
                 Dialog.ModalityType.APPLICATION_MODAL
         );
-        dlg.setSize(950, 770);
+        dlg.setUndecorated(true);
+        dlg.setSize(950, 765);
         dlg.setLocationRelativeTo(null);
 
         JPanel content = new JPanel();
@@ -498,7 +508,7 @@ public class PanelDetalleProducto extends JPanel {
 
         // Evento para crear categorías nuevas
         comboCategoria.addActionListener(e -> {
-            if (comboCategoria.getSelectedItem().equals("➕ Crear nueva categoría")) {
+            if (comboCategoria.getSelectedItem().equals("+ Crear nueva categoría")) {
 
                 String nueva = JOptionPane.showInputDialog(dlg, "Nombre de la nueva categoría:");
                 if (nueva == null || nueva.trim().isEmpty()) {
@@ -523,7 +533,7 @@ public class PanelDetalleProducto extends JPanel {
                 String[] nuevas = new String[categoriasMap.size() + 1];
                 int k=0;
                 for (String nombre : categoriasMap.keySet()) nuevas[k++] = nombre;
-                nuevas[k] = "➕ Crear nueva categoría";
+                nuevas[k] = "+ Crear nueva categoría";
 
                 comboCategoria.setModel(new DefaultComboBoxModel<>(nuevas));
                 comboCategoria.setSelectedItem(nueva);
@@ -596,22 +606,55 @@ public class PanelDetalleProducto extends JPanel {
 
         final byte[][] imgBytes = new byte[1][];
         btnCambiar.addActionListener(ev -> {
-            JFileChooser fc = new JFileChooser();
-            fc.setFileFilter(new FileNameExtensionFilter("Imágenes","jpg","png","jpeg"));
-            if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-                File f = fc.getSelectedFile();
-                try {
-                    BufferedImage img = ImageIO.read(f);
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    ImageIO.write(img, "png", baos);
-                    baos.flush();
-                    imgBytes[0] = baos.toByteArray();
-                    baos.close();
-                    lblImg.setIcon(new ImageIcon(img.getScaledInstance(140,90,Image.SCALE_SMOOTH)));
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(this, "No se pudo leer la imagen: " + ex.getMessage());
-                }
-            }
+        	 try {
+        	        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        	    } catch (Exception ex) {}
+
+        	    JFileChooser chooser = new JFileChooser();
+        	    chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        	    chooser.setAcceptAllFileFilterUsed(false);
+        	    chooser.setFileFilter(new FileNameExtensionFilter("Imágenes", "jpg", "jpeg", "png", "bmp", "gif"));
+
+        	    int res = chooser.showOpenDialog(this);
+        	    if (res == JFileChooser.APPROVE_OPTION) {
+
+        	        File archivo = chooser.getSelectedFile();
+
+        	        try {
+        	            BufferedImage imgOriginal = ImageIO.read(archivo);
+
+        	            // === ESCALAR IMAGEN SI ES MUY GRANDE ===
+        	            int maxDim = 800;
+        	            int newW = imgOriginal.getWidth();
+        	            int newH = imgOriginal.getHeight();
+
+        	            if (newW > maxDim || newH > maxDim) {
+        	                double scale = Math.min((double) maxDim / newW, (double) maxDim / newH);
+        	                newW = (int)(newW * scale);
+        	                newH = (int)(newH * scale);
+        	            }
+
+        	            BufferedImage imgEscalada = new BufferedImage(newW, newH, BufferedImage.TYPE_INT_RGB);
+        	            Graphics2D g2 = imgEscalada.createGraphics();
+        	            g2.setColor(Color.WHITE);
+        	            g2.fillRect(0, 0, newW, newH);
+        	            g2.drawImage(imgOriginal.getScaledInstance(newW, newH, Image.SCALE_SMOOTH), 0, 0, null);
+        	            g2.dispose();
+
+        	            // === GUARDAR COMO BYTE[] ===
+        	            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        	            ImageIO.write(imgEscalada, "png", baos);
+        	            baos.flush();
+        	            imgBytes[0] = baos.toByteArray();
+        	            baos.close();
+
+        	            // === PREVIEW MODERNO ===
+        	            lblImg.setIcon(new ImageIcon(imgEscalada.getScaledInstance(140, 90, Image.SCALE_SMOOTH)));
+
+        	        } catch (Exception ex) {
+        	            JOptionPane.showMessageDialog(this, "Error al cargar la imagen.");
+        	        }
+        	    }
         });
 
         imgPane.add(lblImg);
@@ -694,7 +737,8 @@ public class PanelDetalleProducto extends JPanel {
                 
                 String catNombre = comboCategoria.getSelectedItem().toString();
                 int idCategoria = categoriasMap.getOrDefault(catNombre, 0);
-
+                
+                boolean act = p.activo;
 
                 if (isNew) {
                     try (Connection conn = ConexionDB.obtenerConexion();
@@ -714,6 +758,17 @@ public class PanelDetalleProducto extends JPanel {
                         ps.setInt(11, stockminN);
                         ps.setInt(12, idCategoria);
                         ps.executeUpdate();
+                        
+                        mensaje = "Se ha añadido el producto " + nombreN;
+                        NotificacionManager.agregarNotificacion("PRODUCTO", mensaje);
+                        
+                        if(activoN == true) {
+                        	mensaje = "Se ha habilitado el producto " + nombreN;
+                        	NotificacionManager.agregarNotificacion("PRODUCTO", mensaje);
+                        }else {
+                        	mensaje = "Se ha deshabilitado el producto " + nombreN;
+                        	NotificacionManager.agregarNotificacion("PRODUCTO", mensaje);
+                        }
                     }
                 } else {
                     try (Connection conn = ConexionDB.obtenerConexion();
@@ -732,6 +787,15 @@ public class PanelDetalleProducto extends JPanel {
                         ps.setInt(11, idCategoria);
                         ps.setInt(12, p.id);
                         ps.executeUpdate();
+                        
+                        if (activoN != act) {
+                            if (activoN) {
+                                mensaje = "Se ha habilitado el producto " + nombreN;
+                            } else {
+                                mensaje = "Se ha deshabilitado el producto " + nombreN;
+                            }
+                            NotificacionManager.agregarNotificacion("PRODUCTO", mensaje);
+                        }
                     }
                     if (imgBytes[0] != null) {
                         try (Connection conn = ConexionDB.obtenerConexion();
@@ -830,7 +894,7 @@ public class PanelDetalleProducto extends JPanel {
             add(inner, BorderLayout.CENTER);
 
             // doble click para editar
-            addMouseListener(new MouseAdapter() {
+            inner.addMouseListener(new MouseAdapter() {
                 @Override public void mouseClicked(MouseEvent e) {
                     if (e.getClickCount() == 2) abrirEditor(producto, false);
                 }
@@ -847,6 +911,7 @@ public class PanelDetalleProducto extends JPanel {
             ps.setInt(2, p.id);
             ps.executeUpdate();
             p.activo = !p.activo;
+            cargarProductosDesdeBD(true);
             refrescarCatalogo();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "No se pudo cambiar estado: " + ex.getMessage());
@@ -1051,6 +1116,11 @@ public class PanelDetalleProducto extends JPanel {
             }
         });
     }
+    
+ 
+
+    
+    
 
     private void estilizarBotonSecundario(JButton btn) {
         btn.setFont(FUENTE_GLOBAL.deriveFont(15f));

@@ -32,6 +32,8 @@ import java.io.File;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -59,6 +61,8 @@ public class PanelProductos extends JPanel {
     // === COMPONENTES UI ===
     private final JPanel panelCatalogo = new JPanel();
     private final JScrollPane scrollCatalogo;
+    
+    private static String mensaje;
 
     private final DefaultTableModel modeloFactura;
     private final JTable tablaFactura;
@@ -152,7 +156,7 @@ public class PanelProductos extends JPanel {
         JPanel botonesFactura = new JPanel();
         botonesFactura.setOpaque(false);
         botonesFactura.setLayout(new GridLayout(3,1,10,10));
-        botonesFactura.add(makeBigButton("🛒", "Agregar", e -> agregarSeleccionadoAlCarrito()));
+        //botonesFactura.add(makeBigButton("🛒", "Agregar", e -> agregarSeleccionadoAlCarrito()));
         botonesFactura.add(makeBigButton("❌", "Quitar", e -> quitarSeleccionadoDelCarrito()));
         botonesFactura.add(makeBigButton("💰", "Vender", e -> ejecutarVenta()));
         rightSouth.add(botonesFactura, BorderLayout.CENTER);
@@ -306,7 +310,7 @@ public class PanelProductos extends JPanel {
         if(rolUsuario.equals("GERENTE")){
         	p.add(makeIconButton("🔧", "Editar", e -> abrirPanelDetalle()));
         }
-        p.add(makeIconButton("📃", "Ver Factura", e -> mostrarVentanaFactura()));
+       // p.add(makeIconButton("📃", "Ver Factura", e -> mostrarVentanaFactura()));
         p.add(makeIconButton("🔄", "Refrescar", e -> {        	
             cargarProductosDesdeBD();
             refrescarCatalogo();
@@ -317,12 +321,12 @@ public class PanelProductos extends JPanel {
     private JButton makeIconButton(String text, String tooltip, ActionListener listener) {
         JButton b = new JButton(text);
         b.setToolTipText(tooltip);
-        b.setFont(new Font("Segoe UI Symbol", Font.BOLD, 25));
+        b.setFont(new Font("Segoe UI Symbol", Font.BOLD, 30));
         b.setBorderPainted(false);
         b.setContentAreaFilled(false);
         b.setFocusPainted(false);
         b.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        b.setPreferredSize(new Dimension(70, 60));
+        b.setPreferredSize(new Dimension(72, 63));
         b.addActionListener(listener);
         return b;
     }
@@ -363,12 +367,15 @@ public class PanelProductos extends JPanel {
     // ---------------------- CARGA Y MODELO ----------------------
     private void cargarProductosDesdeBD() {
         productosMap.clear();
-        String sql = "SELECT Id_Producto, Nombre, Nombre_Generico, Farmaceutica, Gramaje, Precio_Venta, Stock, Foto_Producto, Activo, Id_Categoria FROM Producto WHERE Activo = 'S' OR Activo IS NULL";
+
+        String sql = "SELECT Id_Producto, Nombre, Nombre_Generico, Farmaceutica, Gramaje, Precio_Venta, Stock, Foto_Producto, Activo, Id_Categoria, StockMin, Fecha_Caducidad FROM Producto";
+
         try (Connection conn = ConexionDB.obtenerConexion();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
+
                 int id = rs.getInt("Id_Producto");
                 String nombre = rs.getString("Nombre");
                 String nombreGen = rs.getString("Nombre_Generico");
@@ -379,8 +386,40 @@ public class PanelProductos extends JPanel {
                 byte[] foto = rs.getBytes("Foto_Producto");
                 boolean activo = "S".equalsIgnoreCase(rs.getString("Activo"));
                 int cat = rs.getInt("Id_Categoria");
+                int stockMin = rs.getInt("StockMin");
+                String cad = rs.getString("Fecha_Caducidad");
 
-                Producto p = new Producto(id, nombre, nombreGen, farm, gram, precio, stock, foto, activo, cat);
+                // === Verificar caducidad ===
+                if (cad != null && !cad.isEmpty()) {
+                    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                    LocalDate fechaCad = LocalDate.parse(cad, fmt);
+                    LocalDate hoy = LocalDate.now();
+
+                    // Si ya expiró → actualizar BD
+                    if (fechaCad.isBefore(hoy)) {
+                        activo = false;
+
+                        PreparedStatement psInactivar = conn.prepareStatement(
+                            "UPDATE Producto SET Activo = 'N' WHERE Id_Producto = ?"
+                        );
+                        psInactivar.setInt(1, id);
+                        psInactivar.executeUpdate();
+                        psInactivar.close();
+                        
+                     //Notificación al panel de ANUNCIOS
+                        mensaje = "El producto '" + nombre + "' ha caducado y fue marcado como inactivo.";
+                        NotificacionManager.agregarNotificacion("PRODUCTO", mensaje);
+                    }
+                }
+
+                // NO agregar productos inactivos al catálogo
+                if (!activo) continue;
+
+                Producto p = new Producto(
+                    id, nombre, nombreGen, farm, gram,
+                    precio, stock, foto, activo, cat, stockMin, cad
+                );
+
                 productosMap.put(id, p);
             }
 
@@ -389,6 +428,7 @@ public class PanelProductos extends JPanel {
             JOptionPane.showMessageDialog(this, "Error al cargar productos: " + ex.getMessage());
         }
     }
+
 
     // ---------------------- INTERACCIÓN CATALOGO ----------------------
     private void aplicarFiltro(String q) {
@@ -406,7 +446,10 @@ public class PanelProductos extends JPanel {
             scrollCatalogo.getViewport().repaint();
         });
         
-        
+        SwingUtilities.invokeLater(() -> {
+            scrollCatalogo.getViewport().revalidate();
+            scrollCatalogo.getViewport().repaint();
+        });
     }
 
     private void refrescarCatalogo() {
@@ -414,9 +457,9 @@ public class PanelProductos extends JPanel {
         
     }
 
-    private void agregarSeleccionadoAlCarrito() {
+    //private void agregarSeleccionadoAlCarrito() {
         // helper no usado: las tarjetas tienen su propio botón agregado
-    }
+    //}
 
     // ---------------------- CARRITO / FACTURA ----------------------
     private void agregarAlCarritoSeguro(int id, int cantidadToAdd) {
@@ -653,6 +696,20 @@ public class PanelProductos extends JPanel {
             pie.add(lblStock, BorderLayout.CENTER);
 
             JButton btnAdd = makeIconButtonUI("➕", "Agregar al carrito", e -> {
+            	//aviso de stock minimo
+            	 int STOCK_MINIMO = p.stockmin;
+
+            	    if (p.stock <= STOCK_MINIMO) {
+            	        JOptionPane.showMessageDialog(
+            	            PanelProductos.this,
+            	            "⚠ ADVERTENCIA: El producto \"" + p.nombre +
+            	            "\" ha alcanzado su stock mínimo (" + p.stock +
+            	            " unidades). Considere reabastecerlo pronto.",
+            	            "Stock mínimo",
+            	            JOptionPane.WARNING_MESSAGE
+            	        );
+            	    }
+            	
                 String entrada = JOptionPane.showInputDialog(PanelProductos.this, "Cantidad:", "1");
                 if (entrada == null) return;
                 try {
@@ -669,6 +726,28 @@ public class PanelProductos extends JPanel {
             pie.add(btnAdd, BorderLayout.EAST);
 
             add(pie, BorderLayout.SOUTH);
+            
+            //Desavilitacion de stock bajo
+            
+         // --- CONTROLAR STOCK = 0 ---
+            if (p.stock <= 0) {
+                btnAdd.setEnabled(false);
+                btnAdd.setBackground(new Color(200, 200, 200)); // gris
+
+                // toda la tarjeta en gris
+                setBackground(new Color(230, 230, 230));
+
+                lblStock.setText("Stock: 0 (Agotado)");
+                lblStock.setForeground(Color.RED);
+                
+                mensaje = "Se ha deshabilitado la venta del producto " + p.nombre + " por falta de stock";
+            	NotificacionManager.agregarNotificacion("PRODUCTO", mensaje);
+
+                // desactivar hover
+                for (MouseListener ml : getMouseListeners())
+                    removeMouseListener(ml);
+            }
+
 
             // Hover effect
             addMouseListener(new MouseAdapter() {
@@ -715,9 +794,11 @@ public class PanelProductos extends JPanel {
         byte[] foto;
         boolean activo;
         int idCategoria;
+        int stockmin;
+        String caducidad;
 
-        Producto(int id, String nombre, String nombreGenerico, String farmaceutica, String gramaje, double precioVenta, int stock, byte[] foto, boolean activo, int idcategoria) {
-            this.id = id; this.nombre = nombre; this.nombreGenerico = nombreGenerico; this.farmaceutica = farmaceutica; this.gramaje = gramaje; this.precioVenta = precioVenta; this.stock = stock; this.foto = foto; this.activo = activo; this.idCategoria=idcategoria;
+        Producto(int id, String nombre, String nombreGenerico, String farmaceutica, String gramaje, double precioVenta, int stock, byte[] foto, boolean activo, int idcategoria, int stockmin, String caducidad) {
+            this.id = id; this.nombre = nombre; this.nombreGenerico = nombreGenerico; this.farmaceutica = farmaceutica; this.gramaje = gramaje; this.precioVenta = precioVenta; this.stock = stock; this.foto = foto; this.activo = activo; this.idCategoria=idcategoria;this.stockmin = stockmin;this.caducidad=caducidad;
         }
     }
 
