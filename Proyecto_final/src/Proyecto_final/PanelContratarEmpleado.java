@@ -109,15 +109,19 @@ public class PanelContratarEmpleado extends JPanel {
 
         JPanel panelBotones = new JPanel();
         panelBotones.setBackground(colorFondo);
-
         JButton btnGuardar = new JButton("Guardar");
+        JButton btnVolver = new JButton("Volver");
+
+
+
         btnGuardar.setFont(FUENTE_GLOBAL.deriveFont(Font.BOLD, 16f));
         btnGuardar.setFocusPainted(false);
         btnGuardar.setBorderPainted(false);
+        btnGuardar.setBackground(new Color(144, 238, 144));
         btnGuardar.addActionListener(e -> guardar());
 
-        JButton btnVolver = new JButton("Volver");
         btnVolver.setFont(FUENTE_GLOBAL.deriveFont(Font.BOLD, 16f));
+        btnVolver.setBackground(new Color(144, 238, 144));
         btnVolver.setFocusPainted(false);
         btnVolver.setBorderPainted(false);
         btnVolver.addActionListener(e -> padre.volverLista());
