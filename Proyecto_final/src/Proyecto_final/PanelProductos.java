@@ -675,6 +675,25 @@ public class PanelProductos extends JPanel {
                 psStock.setInt(1, cant);
                 psStock.setInt(2, idProd);
                 psStock.executeUpdate();
+                
+             // ==== OBTENER STOCK ACTUAL DESPUÉS DEL UPDATE ====
+                PreparedStatement psCheck = conn.prepareStatement(
+                        "SELECT Stock FROM Producto WHERE Id_Producto = ?"
+                );
+                psCheck.setInt(1, idProd);
+                ResultSet rsStock = psCheck.executeQuery();
+
+                if (rsStock.next()) {
+                    int newStock = rsStock.getInt("Stock");
+
+                    if (newStock == 0) {
+                        mensaje = "El producto '" + p.nombre + "' llegó a 0 unidades y fue deshabilitado para la venta.";
+                        NotificacionManager.agregarNotificacion("PRODUCTO", mensaje);
+                    }
+                }
+
+                psCheck.close();
+                
                 psStock.close();
             }
 
@@ -793,10 +812,7 @@ public class PanelProductos extends JPanel {
 
                 lblStock.setText("Stock: 0 (Agotado)");
                 lblStock.setForeground(Color.RED);
-                
-                mensaje = "Se ha deshabilitado la venta del producto " + p.nombre + " por falta de stock";
-            	NotificacionManager.agregarNotificacion("PRODUCTO", mensaje);
-
+                            
                 // desactivar hover
                 for (MouseListener ml : getMouseListeners())
                     removeMouseListener(ml);
