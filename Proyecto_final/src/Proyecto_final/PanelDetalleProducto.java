@@ -876,7 +876,7 @@ public class PanelDetalleProducto extends JPanel {
 
             JPanel pie = new JPanel(new BorderLayout());
             pie.setOpaque(false);
-            JLabel lblPrecio = new JLabel(String.format("$%.2f", p.precioVenta));
+            JLabel lblPrecio = new JLabel(String.format("C$%.2f", p.precioVenta));
             lblPrecio.setFont(FUENTE_NEGRITA);
             pie.add(lblPrecio, BorderLayout.WEST);
             JLabel lblStock = new JLabel("Stock: "+p.stock);

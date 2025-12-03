@@ -530,7 +530,7 @@ public class PanelProductos extends JPanel {
             subtotal = subtotal.add(total);
         }
 
-        lblTotal.setText("Total: $" + String.format("%.2f", subtotal.doubleValue()));
+        lblTotal.setText("Total: C$" + String.format("%.2f", subtotal.doubleValue()));
     }
 
 
@@ -612,8 +612,8 @@ public class PanelProductos extends JPanel {
 
                 table.addCell(new com.itextpdf.text.Phrase(p.nombre, normalFont));
                 table.addCell(new com.itextpdf.text.Phrase(String.valueOf(qty), normalFont));
-                table.addCell(new com.itextpdf.text.Phrase("$" + precioUnit, normalFont));
-                table.addCell(new com.itextpdf.text.Phrase("$" + totalLinea, normalFont));
+                table.addCell(new com.itextpdf.text.Phrase("C$" + precioUnit, normalFont));
+                table.addCell(new com.itextpdf.text.Phrase("C$" + totalLinea, normalFont));
 
                 totalGeneral = totalGeneral.add(totalLinea);
             }
@@ -623,7 +623,7 @@ public class PanelProductos extends JPanel {
             // ======= TOTAL ========
             doc.add(new com.itextpdf.text.Paragraph(" "));
             doc.add(new com.itextpdf.text.Paragraph(
-                    "TOTAL A PAGAR: $" + totalGeneral.setScale(2, RoundingMode.HALF_UP),
+                    "TOTAL A PAGAR: C$" + totalGeneral.setScale(2, RoundingMode.HALF_UP),
                     tituloFont));
 
             doc.add(new com.itextpdf.text.Paragraph(" "));
@@ -822,7 +822,7 @@ public class PanelProductos extends JPanel {
             JPanel pie = new JPanel(new BorderLayout());
             pie.setOpaque(false);
 
-            JLabel lblPrecio = new JLabel(String.format("$%.2f", p.precioVenta));
+            JLabel lblPrecio = new JLabel(String.format("C$%.2f", p.precioVenta));
             lblPrecio.setFont(FONT_BOLD);
             pie.add(lblPrecio, BorderLayout.WEST);
 
