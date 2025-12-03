@@ -788,6 +788,9 @@ public class PanelDetalleProducto extends JPanel {
                         ps.setInt(12, p.id);
                         ps.executeUpdate();
                         
+                        mensaje = "Se ha actualizado el producto " + nombreN;
+                        NotificacionManager.agregarNotificacion("PRODUCTO", mensaje);
+                        
                         if (activoN != act) {
                             if (activoN) {
                                 mensaje = "Se ha habilitado el producto " + nombreN;

@@ -425,6 +425,11 @@ public class PanelProductos extends JPanel {
                         mensaje = "El producto '" + nombre + "' ha caducado y fue marcado como inactivo.";
                         NotificacionManager.agregarNotificacion("PRODUCTO", mensaje);
                     }
+                    
+                    /*if(stock<=0) {
+                    	 mensaje = "El producto '" + nombre + "' llegó a 0 unidades y fue deshabilitado.";
+                         NotificacionManager.agregarNotificacion("PRODUCTO", mensaje);
+                    }*/
                 }
 
                 // NO agregar productos inactivos al catálogo
@@ -465,6 +470,7 @@ public class PanelProductos extends JPanel {
     private void refrescarCatalogo() {
     	filtrarCatalogo(); 
     	aplicarFiltro("");
+    	
         
     }
 
@@ -639,68 +645,114 @@ public class PanelProductos extends JPanel {
     }
 
 
+    private void verificarStockYNotificar(int idProducto, String nombreProducto) {
+        try (Connection conn = ConexionDB.obtenerConexion();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT Stock FROM Producto WHERE Id_Producto = ?")) {
+
+            ps.setInt(1, idProducto);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                int stock = rs.getInt("Stock");
+                if (stock == 0) {
+                    mensaje = "El producto '" + nombreProducto + "' llegó a 0 unidades y fue deshabilitado.";
+                    NotificacionManager.agregarNotificacion("PRODUCTO", mensaje);
+                }
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    
 
     private void ejecutarVenta() {
         if (carritoMap.isEmpty()) { JOptionPane.showMessageDialog(this, "El carrito está vacío"); return; }
 
+        // Primero guardamos stocks actuales para decidir notificaciones después
+        Map<Integer, Integer> stockPrevio = new java.util.HashMap<>();
+        try (Connection conn = ConexionDB.obtenerConexion()) {
+            if (conn == null) return;
+
+            // Obtener stock previo de cada producto en el carrito (una sola consulta por producto)
+            try (PreparedStatement psSel = conn.prepareStatement("SELECT Stock FROM Producto WHERE Id_Producto = ?")) {
+                for (Integer idProd : carritoMap.keySet()) {
+                    psSel.setInt(1, idProd);
+                    try (ResultSet rs = psSel.executeQuery()) {
+                        if (rs.next()) stockPrevio.put(idProd, rs.getInt(1));
+                        else stockPrevio.put(idProd, 0); // por si no existe
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error preparando venta: " + ex.getMessage());
+            return;
+        }
+
+        // Ahora la transacción de venta
         try (Connection conn = ConexionDB.obtenerConexion()) {
             if (conn == null) return;
             conn.setAutoCommit(false);
 
-            PreparedStatement psVenta = conn.prepareStatement(
+            int idVenta = 0;
+            try (PreparedStatement psVenta = conn.prepareStatement(
                     "INSERT INTO Venta (Fecha, Id_Empleado) VALUES (DATE('now'), ?)",
-                    java.sql.Statement.RETURN_GENERATED_KEYS);
-            psVenta.setInt(1, idEmpleado);
-            psVenta.executeUpdate();
-            ResultSet rsKeys = psVenta.getGeneratedKeys();
-            int idVenta = rsKeys.next() ? rsKeys.getInt(1) : 0;
-            psVenta.close();
+                    java.sql.Statement.RETURN_GENERATED_KEYS)) {
 
-            PreparedStatement psDetalle = conn.prepareStatement(
-                    "INSERT INTO Detalle_Venta (Id_Venta, Id_Producto, Cantidad, Precio_Unitario) VALUES (?,?,?,?)"
-            );
+                psVenta.setInt(1, idEmpleado);
+                psVenta.executeUpdate();
+                try (ResultSet rsKeys = psVenta.getGeneratedKeys()) {
+                    if (rsKeys.next()) idVenta = rsKeys.getInt(1);
+                }
+            }
 
+            try (PreparedStatement psDetalle = conn.prepareStatement(
+                    "INSERT INTO Detalle_Venta (Id_Venta, Id_Producto, Cantidad, Precio_Unitario) VALUES (?,?,?,?)");
+                 PreparedStatement psStock = conn.prepareStatement(
+                         "UPDATE Producto SET Stock = Stock - ? WHERE Id_Producto = ?")) {
+
+                for (Map.Entry<Integer,Integer> e : carritoMap.entrySet()) {
+                    int idProd = e.getKey();
+                    int cant = e.getValue();
+                    Producto p = productosMap.get(idProd);
+
+                    // Insert detalle
+                    psDetalle.setInt(1, idVenta);
+                    psDetalle.setInt(2, idProd);
+                    psDetalle.setInt(3, cant);
+                    psDetalle.setDouble(4, p.precioVenta);
+                    psDetalle.addBatch();
+
+                    // Update stock
+                    psStock.setInt(1, cant);
+                    psStock.setInt(2, idProd);
+                    psStock.addBatch();
+                }
+
+                psDetalle.executeBatch();
+                psStock.executeBatch();
+            }
+
+            conn.commit();
+
+            // --- DESPUÉS DEL COMMIT: enviar notificaciones SI CORRESPONDE ---
             for (Map.Entry<Integer,Integer> e : carritoMap.entrySet()) {
                 int idProd = e.getKey();
                 int cant = e.getValue();
-                Producto p = productosMap.get(idProd);
-
-                psDetalle.setInt(1, idVenta);
-                psDetalle.setInt(2, idProd);
-                psDetalle.setInt(3, cant);
-                psDetalle.setDouble(4, p.precioVenta);
-                psDetalle.addBatch();
-
-                PreparedStatement psStock = conn.prepareStatement("UPDATE Producto SET Stock = Stock - ? WHERE Id_Producto = ?");
-                psStock.setInt(1, cant);
-                psStock.setInt(2, idProd);
-                psStock.executeUpdate();
-                
-             // ==== OBTENER STOCK ACTUAL DESPUÉS DEL UPDATE ====
-                PreparedStatement psCheck = conn.prepareStatement(
-                        "SELECT Stock FROM Producto WHERE Id_Producto = ?"
-                );
-                psCheck.setInt(1, idProd);
-                ResultSet rsStock = psCheck.executeQuery();
-
-                if (rsStock.next()) {
-                    int newStock = rsStock.getInt("Stock");
-
-                    if (newStock == 0) {
-                        mensaje = "El producto '" + p.nombre + "' llegó a 0 unidades y fue deshabilitado para la venta.";
-                        NotificacionManager.agregarNotificacion("PRODUCTO", mensaje);
-                    }
+                Integer prev = stockPrevio.get(idProd);
+                if (prev == null) prev = 0;
+                int nuevo = prev - cant;
+                if (prev > 0 && nuevo <= 0) {
+                    Producto p = productosMap.get(idProd);
+                    String msg = "El producto '" + p.nombre + "' quedó en 0 unidades tras la venta.";
+                    NotificacionManager.agregarNotificacion("PRODUCTO", msg);
                 }
-
-                psCheck.close();
-                
-                psStock.close();
             }
 
-            psDetalle.executeBatch();
-            psDetalle.close();
-            conn.commit();
-
+            // mostrar factura y refrescar UI
             mostrarVentanaFactura();
 
             carritoMap.clear();
@@ -710,9 +762,19 @@ public class PanelProductos extends JPanel {
 
         } catch (Exception ex) {
             ex.printStackTrace();
+            // intentar rollback si la conexión sigue abierta
+            try {
+                // Si la conexión está disponible y no auto-commit, hacer rollback
+                // (este bloque es seguro aunque conn sea cerrado; captura excepciones)
+                Connection c = ConexionDB.obtenerConexion();
+                if (c != null && !c.getAutoCommit()) c.rollback();
+            } catch (Exception rb) {
+                // ignorar
+            }
             JOptionPane.showMessageDialog(this, "Error al registrar venta: " + ex.getMessage());
         }
     }
+
 
     // ---------------------- COMPONENTES AUXILIARES ----------------------
     private class ProductoCard extends JPanel {
@@ -812,7 +874,10 @@ public class PanelProductos extends JPanel {
 
                 lblStock.setText("Stock: 0 (Agotado)");
                 lblStock.setForeground(Color.RED);
-                            
+                
+                /*mensaje = "Se ha deshabilitado la venta del producto " + p.nombre + " por falta de stock";
+            	NotificacionManager.agregarNotificacion("PRODUCTO", mensaje);*/
+
                 // desactivar hover
                 for (MouseListener ml : getMouseListeners())
                     removeMouseListener(ml);

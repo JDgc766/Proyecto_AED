@@ -21,7 +21,6 @@ public class NotificacionManager {
             // Guardar la fecha y hora actual
             String fechaActual = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
             ps.setString(3, fechaActual);
-
             ps.executeUpdate();
 
         } catch (SQLException e) {
