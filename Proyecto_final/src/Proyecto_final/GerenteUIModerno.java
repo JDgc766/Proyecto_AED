@@ -173,7 +173,7 @@ public class GerenteUIModerno extends JFrame {
 
             // Deshabilitar botones según rol
             if (rol.equals("VENDEDOR")) {
-                if (textoFinal.equals("Vendedores") || textoFinal.equals("Anuncios")) {
+                if (textoFinal.equals("Vendedores") || textoFinal.equals("Anuncios") || textoFinal.equals("Reportes")) {
                     boton.setEnabled(false);
                 }
             }
